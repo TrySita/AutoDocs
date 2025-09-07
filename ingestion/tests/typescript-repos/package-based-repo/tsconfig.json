@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "."
+    },
+    {
+      "path": "auth-lib"
+    },
+    {
+      "path": "user-service"
+    }
+  ]
+}

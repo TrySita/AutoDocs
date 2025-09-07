@@ -1,0 +1,1189 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "6",
+  "dialect": "sqlite",
+  "tables": {
+    "files": {
+      "name": "files",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "file_path": {
+          "autoincrement": false,
+          "name": "file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_content": {
+          "autoincrement": false,
+          "name": "file_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "language": {
+          "autoincrement": false,
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_modified": {
+          "autoincrement": false,
+          "name": "last_modified",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "autoincrement": false,
+          "name": "updated_at",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ai_summary": {
+          "autoincrement": false,
+          "name": "ai_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_files_path": {
+          "name": "idx_files_path",
+          "columns": ["file_path"],
+          "isUnique": false
+        },
+        "idx_files_language": {
+          "name": "idx_files_language",
+          "columns": ["language"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    },
+    "packages": {
+      "name": "packages",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "autoincrement": false,
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "autoincrement": false,
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entry_point": {
+          "autoincrement": false,
+          "name": "entry_point",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "workspace_type": {
+          "autoincrement": false,
+          "name": "workspace_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_workspace_root": {
+          "autoincrement": false,
+          "name": "is_workspace_root",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "autoincrement": false,
+          "name": "updated_at",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "readme_content": {
+          "autoincrement": false,
+          "name": "readme_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_packages_workspace_root": {
+          "name": "idx_packages_workspace_root",
+          "columns": ["is_workspace_root"],
+          "isUnique": false
+        },
+        "idx_packages_path": {
+          "name": "idx_packages_path",
+          "columns": ["path"],
+          "isUnique": false
+        },
+        "idx_packages_name": {
+          "name": "idx_packages_name",
+          "columns": ["name"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    },
+    "definitions": {
+      "name": "definitions",
+      "columns": {
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "file_id": {
+          "autoincrement": false,
+          "name": "file_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "autoincrement": false,
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "definition_type": {
+          "autoincrement": false,
+          "name": "definition_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_line": {
+          "autoincrement": false,
+          "name": "start_line",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_line": {
+          "autoincrement": false,
+          "name": "end_line",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "docstring": {
+          "autoincrement": false,
+          "name": "docstring",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_code": {
+          "autoincrement": false,
+          "name": "source_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_code_hash": {
+          "autoincrement": false,
+          "name": "source_code_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_exported": {
+          "autoincrement": false,
+          "name": "is_exported",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_default_export": {
+          "autoincrement": false,
+          "name": "is_default_export",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "complexity_score": {
+          "autoincrement": false,
+          "name": "complexity_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ai_summary": {
+          "autoincrement": false,
+          "name": "ai_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_definitions_file_type": {
+          "name": "idx_definitions_file_type",
+          "columns": ["file_id", "definition_type"],
+          "isUnique": false
+        },
+        "idx_definitions_name": {
+          "name": "idx_definitions_name",
+          "columns": ["name"],
+          "isUnique": false
+        },
+        "idx_definitions_exported": {
+          "name": "idx_definitions_exported",
+          "columns": ["is_exported"],
+          "isUnique": false
+        },
+        "idx_definitions_source_code_hash": {
+          "name": "idx_definitions_source_code_hash",
+          "columns": ["source_code_hash"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "definitions_file_id_files_id_fk": {
+          "name": "definitions_file_id_files_id_fk",
+          "tableFrom": "definitions",
+          "tableTo": "files",
+          "columnsFrom": ["file_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    },
+    "imports": {
+      "name": "imports",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "file_id": {
+          "autoincrement": false,
+          "name": "file_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "specifier": {
+          "autoincrement": false,
+          "name": "specifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "module": {
+          "autoincrement": false,
+          "name": "module",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "import_type": {
+          "autoincrement": false,
+          "name": "import_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resolved_file_path": {
+          "autoincrement": false,
+          "name": "resolved_file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alias": {
+          "autoincrement": false,
+          "name": "alias",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_external": {
+          "autoincrement": false,
+          "name": "is_external",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_package_id": {
+          "autoincrement": false,
+          "name": "target_package_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolution_type": {
+          "autoincrement": false,
+          "name": "resolution_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_imports_file": {
+          "name": "idx_imports_file",
+          "columns": ["file_id"],
+          "isUnique": false
+        },
+        "idx_imports_resolution_type": {
+          "name": "idx_imports_resolution_type",
+          "columns": ["resolution_type"],
+          "isUnique": false
+        },
+        "idx_imports_target_package": {
+          "name": "idx_imports_target_package",
+          "columns": ["target_package_id"],
+          "isUnique": false
+        },
+        "idx_imports_module": {
+          "name": "idx_imports_module",
+          "columns": ["module"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "imports_target_package_id_packages_id_fk": {
+          "name": "imports_target_package_id_packages_id_fk",
+          "tableFrom": "imports",
+          "tableTo": "packages",
+          "columnsFrom": ["target_package_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "imports_file_id_files_id_fk": {
+          "name": "imports_file_id_files_id_fk",
+          "tableFrom": "imports",
+          "tableTo": "files",
+          "columnsFrom": ["file_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    },
+    "file_dependencies": {
+      "name": "file_dependencies",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "from_file_id": {
+          "autoincrement": false,
+          "name": "from_file_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_file_id": {
+          "autoincrement": false,
+          "name": "to_file_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_file_dependencies_to": {
+          "name": "idx_file_dependencies_to",
+          "columns": ["to_file_id"],
+          "isUnique": false
+        },
+        "idx_file_dependencies_from": {
+          "name": "idx_file_dependencies_from",
+          "columns": ["from_file_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "file_dependencies_to_file_id_files_id_fk": {
+          "name": "file_dependencies_to_file_id_files_id_fk",
+          "tableFrom": "file_dependencies",
+          "tableTo": "files",
+          "columnsFrom": ["to_file_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "file_dependencies_from_file_id_files_id_fk": {
+          "name": "file_dependencies_from_file_id_files_id_fk",
+          "tableFrom": "file_dependencies",
+          "tableTo": "files",
+          "columnsFrom": ["from_file_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    },
+    "type_references": {
+      "name": "type_references",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "definition_id": {
+          "autoincrement": false,
+          "name": "definition_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type_name": {
+          "autoincrement": false,
+          "name": "type_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "autoincrement": false,
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_definition_id": {
+          "autoincrement": false,
+          "name": "source_definition_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "import_id": {
+          "autoincrement": false,
+          "name": "import_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_type_references_definition": {
+          "name": "idx_type_references_definition",
+          "columns": ["definition_id"],
+          "isUnique": false
+        },
+        "idx_type_references_source": {
+          "name": "idx_type_references_source",
+          "columns": ["source_definition_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "type_references_import_id_imports_id_fk": {
+          "name": "type_references_import_id_imports_id_fk",
+          "tableFrom": "type_references",
+          "tableTo": "imports",
+          "columnsFrom": ["import_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "type_references_source_definition_id_definitions_id_fk": {
+          "name": "type_references_source_definition_id_definitions_id_fk",
+          "tableFrom": "type_references",
+          "tableTo": "definitions",
+          "columnsFrom": ["source_definition_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "type_references_definition_id_definitions_id_fk": {
+          "name": "type_references_definition_id_definitions_id_fk",
+          "tableFrom": "type_references",
+          "tableTo": "definitions",
+          "columnsFrom": ["definition_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    },
+    "function_calls": {
+      "name": "function_calls",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "callee_name": {
+          "autoincrement": false,
+          "name": "callee_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "callee_source": {
+          "autoincrement": false,
+          "name": "callee_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "caller_definition_id": {
+          "autoincrement": false,
+          "name": "caller_definition_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "callee_definition_id": {
+          "autoincrement": false,
+          "name": "callee_definition_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "import_id": {
+          "autoincrement": false,
+          "name": "import_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_function_calls_callee": {
+          "name": "idx_function_calls_callee",
+          "columns": ["callee_definition_id"],
+          "isUnique": false
+        },
+        "idx_function_calls_caller": {
+          "name": "idx_function_calls_caller",
+          "columns": ["caller_definition_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "function_calls_import_id_imports_id_fk": {
+          "name": "function_calls_import_id_imports_id_fk",
+          "tableFrom": "function_calls",
+          "tableTo": "imports",
+          "columnsFrom": ["import_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "function_calls_callee_definition_id_definitions_id_fk": {
+          "name": "function_calls_callee_definition_id_definitions_id_fk",
+          "tableFrom": "function_calls",
+          "tableTo": "definitions",
+          "columnsFrom": ["callee_definition_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "function_calls_caller_definition_id_definitions_id_fk": {
+          "name": "function_calls_caller_definition_id_definitions_id_fk",
+          "tableFrom": "function_calls",
+          "tableTo": "definitions",
+          "columnsFrom": ["caller_definition_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    },
+    "definition_dependencies": {
+      "name": "definition_dependencies",
+      "columns": {
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "from_definition_id": {
+          "autoincrement": false,
+          "name": "from_definition_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_definition_id": {
+          "autoincrement": false,
+          "name": "to_definition_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dependency_type": {
+          "autoincrement": false,
+          "name": "dependency_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "strength": {
+          "autoincrement": false,
+          "name": "strength",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_dependencies_type": {
+          "name": "idx_dependencies_type",
+          "columns": ["dependency_type"],
+          "isUnique": false
+        },
+        "idx_dependencies_dependent": {
+          "name": "idx_dependencies_dependent",
+          "columns": ["from_definition_id"],
+          "isUnique": false
+        },
+        "idx_dependencies_dependency": {
+          "name": "idx_dependencies_dependency",
+          "columns": ["to_definition_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "definition_dependencies_to_definition_id_definitions_id_fk": {
+          "name": "definition_dependencies_to_definition_id_definitions_id_fk",
+          "tableFrom": "definition_dependencies",
+          "tableTo": "definitions",
+          "columnsFrom": ["to_definition_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "definition_dependencies_from_definition_id_definitions_id_fk": {
+          "name": "definition_dependencies_from_definition_id_definitions_id_fk",
+          "tableFrom": "definition_dependencies",
+          "tableTo": "definitions",
+          "columnsFrom": ["from_definition_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    },
+    "embeddings": {
+      "name": "embeddings",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "entity_type": {
+          "autoincrement": false,
+          "name": "entity_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "autoincrement": false,
+          "name": "entity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_name": {
+          "autoincrement": false,
+          "name": "entity_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_path": {
+          "autoincrement": false,
+          "name": "file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "language": {
+          "autoincrement": false,
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "definition_type": {
+          "autoincrement": false,
+          "name": "definition_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_exported": {
+          "autoincrement": false,
+          "name": "is_exported",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "complexity_score": {
+          "autoincrement": false,
+          "name": "complexity_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "default": "'datetime(''now'')'",
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embedding": {
+          "autoincrement": false,
+          "name": "embedding",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "embeddings_idx": {
+          "name": "embeddings_idx",
+          "columns": [],
+          "isUnique": false
+        },
+        "embeddings_entity_unique": {
+          "name": "embeddings_entity_unique",
+          "columns": ["entity_type", "entity_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    },
+    "embeddings_idx_shadow": {
+      "name": "embeddings_idx_shadow",
+      "columns": {
+        "index_key": {
+          "autoincrement": false,
+          "name": "index_key",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": false
+        },
+        "data": {
+          "autoincrement": false,
+          "name": "data",
+          "type": "blob",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "embeddings_idx_shadow_idx": {
+          "name": "embeddings_idx_shadow_idx",
+          "columns": ["index_key"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "definitions_check_1": {
+          "name": "definitions_check_1",
+          "value": "definition_type IN ('function', 'class', 'interface', 'type', 'variable', 'constructor', 'enum', 'module'"
+        },
+        "imports_check_2": {
+          "name": "imports_check_2",
+          "value": "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export'"
+        },
+        "imports_check_3": {
+          "name": "imports_check_3",
+          "value": "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown'"
+        },
+        "type_references_check_4": {
+          "name": "type_references_check_4",
+          "value": "source IN ('local', 'imported', 'unknown'"
+        },
+        "function_calls_check_5": {
+          "name": "function_calls_check_5",
+          "value": "callee_source IN ('local', 'imported', 'unknown'"
+        },
+        "definition_dependencies_check_6": {
+          "name": "definition_dependencies_check_6",
+          "value": "dependency_type IN ('type_reference', 'function_call', 'inheritance', 'import'"
+        },
+        "embeddings_check_7": {
+          "name": "embeddings_check_7",
+          "value": "entity_type in ('file','definition'"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

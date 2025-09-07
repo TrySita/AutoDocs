@@ -1,0 +1,28 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1755212523337,
+      "tag": "0000_furry_nomad",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1755271609747,
+      "tag": "0001_volatile_zzzax",
+      "breakpoints": true
+    }
+    ,
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1757088000000,
+      "tag": "0002_ingestion_job_columns",
+      "breakpoints": true
+    }
+  ]
+}

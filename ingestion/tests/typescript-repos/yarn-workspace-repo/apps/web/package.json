@@ -1,0 +1,8 @@
+{
+  "name": "@company/web",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "@company/shared": "*"
+  }
+}

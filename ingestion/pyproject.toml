@@ -1,0 +1,83 @@
+[project]
+name = "analysis-agent"
+version = "0.1.0"
+description = "AST-based code analysis with DAG construction"
+authors = [{ name = "Sita" }]
+requires-python = ">=3.13"
+readme = "README.md"
+dependencies = [
+    "pydantic (>=2.11.7,<3.0.0)",
+    "sqlalchemy (>=2.0.41,<3.0.0)",
+    "networkx (>=3.5,<4.0)",
+    "matplotlib (>=3.10.3,<4.0.0)",
+    "plotly (>=6.2.0,<7.0.0)",
+    "faiss-cpu (>=1.7.4,<2.0.0)",
+    "sentence-transformers (>=5.0.0,<6.0.0)",
+    "openai-agents (>=0.1.0,<1.0.0)",
+    "openai (>=1.0.0,<2.0.0)",
+    "aiohttp (>=3.12.14,<4.0.0)",
+    "tree-sitter (>=0.20.0,<1.0.0)",
+    "tree-sitter-language-pack (>=0.1.0,<1.0.0)",
+    "pathspec (>=0.9.0)",
+    "z3-solver (>=4.12.0,<5.0.0)",
+    "fastapi (>=0.104.0,<1.0.0)",
+    "uvicorn[standard] (>=0.24.0,<1.0.0)",
+    "langchain-community (>=0.3.0,<1.0.0)",
+    "sqlite-vec (>=0.1.0,<1.0.0)",
+    "langchain-google-genai (>=2.1.8,<3.0.0)",
+    "prompt_toolkit (>=3.0.0,<4.0.0)",
+    "tenacity (>=9.0.0,<10.0.0)",
+    "pygit2 (>=1.12.0,<2.0.0)",
+    "pyjwt>=2.10.1",
+    "cryptography>=45.0.7",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.0,<2",
+    "pytest>=8.4.1,<9",
+    "ruff>=0.12.5,<0.13",
+    "pytest-asyncio>=1.1.0,<2",
+    "types-networkx>=3.5.0.20250712,<4",
+    "basedpyright>=1.17.3,<2",
+    "pyvis>=0.3.2,<0.4",
+    "ipython>=9.4.0,<10",
+    "datamodel-code-generator>=0.32.0,<0.33",
+    "httpx>=0.28.0,<0.29",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/database",
+    "src/ast_parsing",
+    "src/dag_builder",
+    "src/api",
+    "src/embeddings",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "src/database",
+    "src/ast_parsing",
+    "src/dag_builder",
+    "src/api",
+    "src/embeddings",
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/database" = "database"
+"src/ast_parsing" = "ast_parsing"
+"src/dag_builder" = "dag_builder"
+"src/api" = "api"
+"src/embeddings" = "embeddings"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+python_classes = ["Test", "Describe"]
+python_functions = ["test_", "it_", "and_", "but_", "they_"]
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+pythonpath = ["src"]

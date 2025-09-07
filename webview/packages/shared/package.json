@@ -1,0 +1,23 @@
+{
+  "name": "@sita/shared",
+  "version": "1.0.0",
+  "description": "shared stuff",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "dotenv": "17.2.1",
+    "drizzle-kit": "^0.31.4",
+    "drizzle-orm": "^0.44.5",
+    "openai": "^5.16.0",
+    "postgres": "^3.4.7",
+    "zod": "3.25.76",
+    "zod-to-json-schema": "^3.24.6"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.15.0"
+}

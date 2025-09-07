@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: app-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports: ["5432:5432"]
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./webview/packages/shared/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c max_connections=40
+      -c work_mem=8MB
+      -c maintenance_work_mem=64MB
+      -c effective_cache_size=256MB
+      -c synchronous_commit=off
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: ingestion/Dockerfile
+      secrets:
+        - local_env
+    container_name: app-api
+    platform: "linux/amd64"
+    env_file: .env
+    volumes:
+      - ./ingested_repos:/ingested_repos
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: webview/Dockerfile
+      secrets:
+        - local_env
+    container_name: app-web
+    volumes:
+      - ./ingested_repos:/ingested_repos
+    environment:
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+    ports: ["3000:3000"]
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  ingested_repos:
+
+secrets:
+  local_env:
+    file: ./.env

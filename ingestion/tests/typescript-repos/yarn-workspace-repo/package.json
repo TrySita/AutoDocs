@@ -1,0 +1,12 @@
+{
+  "name": "yarn-workspace-root",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

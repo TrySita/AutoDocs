@@ -1,0 +1,8 @@
+{
+  "name": "user-service",
+  "version": "1.0.0",
+  "main": "./index.ts",
+  "dependencies": {
+    "auth-lib": "*"
+  }
+}

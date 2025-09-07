@@ -1,0 +1,11 @@
+{
+  "allowedUntypedLibraries": ["networkx", "networkx.DiGraph"],
+  "executionEnvironments": [
+    {
+      "root": "src"
+    }
+  ],
+  "ignore": [
+    "tests"
+  ]
+}

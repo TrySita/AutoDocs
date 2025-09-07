@@ -1,0 +1,11 @@
+{
+  "include": ["ingestion/src"],
+  "venvPath": "ingestion",
+  "venv": ".venv",
+  "executionEnvironments": [
+    {
+      "root": "ingestion/src",
+      "extraPaths": ["ingestion/src"]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+# Bazel
+bazel-bin/
+bazel-out/
+bazel-testlogs/
+.bazelcache/
+.bazelize/
+
+# python / uv
+__pycache__/
+*.pyc
+ingestion/.venv/
+ingestion/.uv/
+
+# Node / pnpm / Turbo
+webview/node_modules/
+webview/**/node_modules/
+webview/.pnpm-store/
+webview/**/.pnpm-store/
+webview/**/dist/
+webview/**/.next/
+webview/**/.turbo/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+ingested_repos/
+.env
+.env.local
