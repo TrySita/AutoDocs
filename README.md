@@ -27,6 +27,11 @@
     <a href="./readmes/README.zh-CN.md"><img alt="简体中文" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
 </p>
 
+<video width="640" controls>
+ <source src="https://github.com/TrySita/AutoDocs/raw/refs/heads/main/assets/sita%20demo.mp4" type="video/mp4">
+ Your browser does not support the video tag.
+</video>
+
 # AutoDocs, by [Sita](https://trysita.com)
 
 Automate documentation for any repo: we traverse your codebase, parse the AST, build a dependency graph, and walk that graph to generate accurate, high‑signal docs. A built‑in MCP server lets coding agents deep‑search your code via HTTP.
