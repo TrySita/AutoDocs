@@ -1,17 +1,31 @@
+![Sita Github Banner](https://raw.githubusercontent.com/TrySita/AutoDocs/refs/heads/main/assets/sita-og.png)
+
+<div align="center">
+   <div>
+      <a href="https://docs.trysita.com"><strong>Docs</strong></a> ·
+      <a href="https://github.com/TrySita/AutoDocs/issues"><strong>Report Bug</strong></a> ·
+      <a href="https://langfuse.com/ideas"><strong>Feature Request</strong></a> ·
+   </div>
+   <br/>
+   <span>Sita uses <a href="https://github.com/orgs/TrySita/discussions"><strong>GitHub Discussions</strong></a>  for Support and Feature Requests.</span>
+   <br/>
+   <br/>
+   <br/>
+   <div>
+   </div>
+</div>
+
 <p align="center">
-  <img src="webview/apps/webapp/public/favicon.svg" alt="AutoDocs by Sita" width="96" height="96" />
+   <a href="./LICENSE">
+   <img src="https://img.shields.io/badge/License-Apache%202.0-E11311.svg" alt="Apache 2.0 License">
+   </a>
 </p>
 
-## Translations
-
-Translations of this README are available in `readmes/`:
-
-- [简体中文 (Chinese, Simplified)](readmes/README.zh-CN.md)
-- [Español (Spanish)](readmes/README.es.md)
-- [हिन्दी (Hindi)](readmes/README.hi.md)
-- [العربية (Arabic, MSA)](readmes/README.ar.md)
-
-(...and 25 more)
+<p align="center">
+  <a href="./readmes/README.zh-CN.md"><img alt="Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
+  <a href="./readmes/README.zh-CN.md"><img alt="हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
+    <a href="./readmes/README.zh-CN.md"><img alt="简体中文" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+</p>
 
 # AutoDocs, by [Sita](https://trysita.com)
 
@@ -82,14 +96,16 @@ cp .env.example .env
 - Ingestion API: `INGESTION_API_URL` for the web app to call the FastAPI service.
 - Analysis storage: `ANALYSIS_DB_DIR` controls where generated per-repo SQLite files live.
 
+---
 
---- 
 #### To-be configured
 
 - Summaries: `SUMMARIES_API_KEY`, `SUMMARIES_MODEL`, `SUMMARIES_BASE_URL` (OpenAI-compatible, default [OpenRouter](https://openrouter.ai/))
 - Embeddings: `EMBEDDINGS_API_KEY`, `EMBEDDINGS_MODEL`, `EMBEDDINGS_BASE_URL` (OpenAI-compatible, default [OpenAI](https://openai.com/api/))
 - Rate limiting: `MAX_REQUESTS_PER_SECOND` for LLM summary batching (default 15)
+
 ---
+
 2. Install web dependencies
 
 ```bash
