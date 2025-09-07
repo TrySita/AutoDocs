@@ -2,7 +2,7 @@
   <img src="webview/apps/webapp/public/favicon.svg" alt="AutoDocs by Sita" width="96" height="96" />
 </p>
 
-## Translations
+## Translation
 
 Translations of this README are available in `readmes/`:
 
@@ -82,14 +82,16 @@ cp .env.example .env
 - Ingestion API: `INGESTION_API_URL` for the web app to call the FastAPI service.
 - Analysis storage: `ANALYSIS_DB_DIR` controls where generated per-repo SQLite files live.
 
+---
 
---- 
 #### To-be configured
 
 - Summaries: `SUMMARIES_API_KEY`, `SUMMARIES_MODEL`, `SUMMARIES_BASE_URL` (OpenAI-compatible, default [OpenRouter](https://openrouter.ai/))
 - Embeddings: `EMBEDDINGS_API_KEY`, `EMBEDDINGS_MODEL`, `EMBEDDINGS_BASE_URL` (OpenAI-compatible, default [OpenAI](https://openai.com/api/))
 - Rate limiting: `MAX_REQUESTS_PER_SECOND` for LLM summary batching (default 15)
+
 ---
+
 2. Install web dependencies
 
 ```bash
