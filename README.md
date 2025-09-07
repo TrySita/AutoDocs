@@ -49,7 +49,7 @@ Install these once on your machine:
 
 - pnpm 10+ (Node 20+ recommended; Corepack is fine). [Docs](https://pnpm.io/installation)
 - uv (fast Python package manager). [Docs](https://docs.astral.sh/uv/)
-- Docker + Docker Compose (to run everything locally). [Docs] (https://docs.docker.com/engine/install/)
+- Docker + Docker Compose (to run everything locally). [Docs](https://docs.docker.com/engine/install/)
 
 Reference docs
 
