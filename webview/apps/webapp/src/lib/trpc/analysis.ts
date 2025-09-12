@@ -39,8 +39,94 @@ const definitionBatchSchema = z.object({
   projectSlug: z.string(),
 });
 
+const searchQuerySchema = z.object({
+  projectSlug: z.string(),
+  q: z.string().min(1),
+  limit: z.number().min(1).max(50).default(10),
+  offset: z.number().min(0).default(0),
+});
+
 // Response schemas to match Python API structure
 export const analysisRouter = router({
+  // Search endpoints (FTS)
+  search: router({
+    files: publicProcedure.input(searchQuerySchema).query(async ({ input }) => {
+      const { q, limit, offset, projectSlug } = input;
+      const { dbUrl } = await getProjectDbConfig(projectSlug);
+
+      if (!dbUrl) {
+        throw new Error("Project database configuration not found");
+      }
+
+      const { client, close } = getAnalysisDB(dbUrl);
+
+      try {
+        // Simple prefix query using FTS5 (prefix indexes enabled in ingestion)
+        const match = `${q.trim()}*`;
+        const res = await client.execute({
+          sql: `
+            SELECT f.id as id,
+                   f.file_path as filePath,
+                   f.language as language
+            FROM files_path_fts fts
+            JOIN files f ON fts.rowid = f.id
+            WHERE files_path_fts MATCH ?
+            LIMIT ? OFFSET ?
+          `,
+          args: [match, limit, offset],
+        });
+
+        // libsql returns rows as objects already
+        return res.rows;
+      } finally {
+        close();
+      }
+    }),
+
+    definitions: publicProcedure
+      .input(searchQuerySchema)
+      .query(async ({ input }) => {
+        const { q, limit, offset, projectSlug } = input;
+        const { dbUrl } = await getProjectDbConfig(projectSlug);
+
+        if (!dbUrl) {
+          throw new Error("Project database configuration not found");
+        }
+
+        const { client, close } = getAnalysisDB(dbUrl);
+
+        try {
+          const match = `${q.trim()}*`;
+          const res = await client.execute({
+            sql: `
+              SELECT d.id as id,
+                     d.name as name,
+                     d.definition_type as definitionType,
+                     d.file_id as fileId,
+                     f.id as file_id,
+                     f.file_path as file_path
+              FROM definitions_name_fts fts
+              JOIN definitions d ON fts.rowid = d.id
+              JOIN files f ON f.id = d.file_id
+              WHERE definitions_name_fts MATCH ?
+              LIMIT ? OFFSET ?
+            `,
+            args: [match, limit, offset],
+          });
+          const rows = res.rows;
+
+          return rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            definitionType: r.definitionType,
+            fileId: r.fileId,
+            file: { id: r.file_id, filePath: r.file_path },
+          }));
+        } finally {
+          close();
+        }
+      }),
+  }),
   // Files endpoints
   files: router({
     list: publicProcedure.input(filesQuerySchema).query(async ({ input }) => {

@@ -1,17 +1,31 @@
 "use client";
 
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/common/shadcn-components/command";
 import ChatDrawer from "@/components/workspace/ChatDrawer";
 import FileExplorer from "@/components/workspace/FileExplorer";
 import FloatingChatIcon from "@/components/workspace/FloatingChatIcon";
 import NotebookView from "@/components/workspace/NotebookView";
+import { useFiles } from "@/hooks/useApi";
 import { useCustomSearchParams } from "@/hooks/useSearchParams";
 import { useSelectedFile } from "@/hooks/useSelected";
 import { DefinitionMetadata } from "@/types/codebase";
 import { isChatDrawerOpenAtom } from "@/utils/isChatOpen";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
+import { File, Hash } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { useTRPC } from "@/lib/trpc/client";
+import { currentRepoSlugAtom } from "@/lib/atoms/workspace";
+import { useQuery } from "@tanstack/react-query";
 
 interface UserWorkspaceProps {
   view?: "docs" | "source";
@@ -20,14 +34,82 @@ interface UserWorkspaceProps {
 const UserWorkspace = ({ view = "docs" }: UserWorkspaceProps) => {
   const [, setSearchParams] = useCustomSearchParams();
   const [isChatOpen, setIsChatOpen] = useAtom(isChatDrawerOpenAtom);
-  const params = useParams();
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const { data: files } = useFiles();
+  const trpc = useTRPC();
+  const projectSlug = useAtomValue(currentRepoSlugAtom);
   const notebookRef = useRef<{
     switchToSourceTab: (startLine: number, endLine: number) => void;
   }>(null);
-  // Tracking removed
+
+  // Keyboard shortcut for command palette
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setIsCommandOpen(true);
+      }
+    };
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
+
+  // Debounce the search input to avoid spamming queries
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
+  // Server-backed search using TRPC + FTS
+  const enabledSearch =
+    isCommandOpen && !!projectSlug && debouncedQuery.length > 0;
+
+  const fileSearch = useQuery({
+    ...trpc.analysis.search.files.queryOptions({
+      projectSlug: projectSlug!,
+      q: debouncedQuery,
+      limit: 8,
+      offset: 0,
+    }),
+    enabled: enabledSearch,
+    staleTime: 5000,
+  });
+
+  const definitionSearch = useQuery({
+    ...trpc.analysis.search.definitions.queryOptions({
+      projectSlug: projectSlug!,
+      q: debouncedQuery,
+      limit: 8,
+      offset: 0,
+    }),
+    enabled: enabledSearch,
+    staleTime: 5000,
+  });
+
+  // Fallback to file list when no query
+  const filteredItems = useMemo(() => {
+    if (!debouncedQuery) {
+      return { files: files || [], definitions: [] as DefinitionMetadata[] };
+    }
+    return {
+      /**
+       * @todo: hacky cast, add zod validation or fix SQL types
+       */
+      files: (fileSearch.data || []) as unknown as {
+        id: number;
+        filePath: string;
+      }[],
+      definitions: (definitionSearch.data || []) as DefinitionMetadata[],
+    };
+  }, [files, debouncedQuery, fileSearch.data, definitionSearch.data]);
 
   const handleFileSelect = (fileId: number) => {
     setSearchParams({ fileId: fileId.toString() });
+    setIsCommandOpen(false);
   };
 
   const handleNavigateToDefinition = (definition: DefinitionMetadata) => {
@@ -35,6 +117,18 @@ const UserWorkspace = ({ view = "docs" }: UserWorkspaceProps) => {
       fileId: definition.fileId.toString(),
       definitionId: definition.id.toString(),
     });
+    setIsCommandOpen(false);
+  };
+
+  const handleDefinitionSelect = (definition: {
+    fileId: number;
+    id: number;
+  }) => {
+    setSearchParams({
+      fileId: definition.fileId.toString(),
+      definitionId: definition.id.toString(),
+    });
+    setIsCommandOpen(false);
   };
 
   const handleHighlightDefinition = (startLine: number, endLine: number) => {
@@ -61,6 +155,7 @@ const UserWorkspace = ({ view = "docs" }: UserWorkspaceProps) => {
           <FileExplorer
             onFileSelect={handleFileSelect}
             selectedFileId={fileData?.id}
+            onSearchClick={() => setIsCommandOpen(true)}
           />
         </Panel>
 
@@ -110,6 +205,57 @@ const UserWorkspace = ({ view = "docs" }: UserWorkspaceProps) => {
         onClick={() => setIsChatOpen(true)}
         isVisible={!isChatOpen}
       />
+
+      {/* Command Dialog */}
+      <CommandDialog
+        open={isCommandOpen}
+        onOpenChange={setIsCommandOpen}
+        title="Quick Navigation"
+        description="Search files and definitions..."
+        shouldFilter={false}
+      >
+        <CommandInput
+          placeholder="Search files and definitions..."
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+        />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+
+          <CommandGroup heading="Files">
+            {filteredItems.files.map((file) => (
+              <CommandItem
+                key={`file-${file.id}`}
+                value={`file-${file.id}`}
+                onSelect={() => handleFileSelect(file.id)}
+                className="flex items-center gap-2"
+              >
+                <File className="h-4 w-4" />
+                <span className="flex-1 truncate">{file.filePath}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+
+          <CommandGroup heading="Definitions">
+            {filteredItems.definitions.map((definition) => (
+              <CommandItem
+                key={`def-${definition.id}`}
+                value={`def-${definition.id}`}
+                onSelect={() => handleDefinitionSelect(definition)}
+                className="flex items-center gap-2"
+              >
+                <Hash className="h-4 w-4" />
+                <div className="flex-1">
+                  <div className="font-medium">{definition.name}</div>
+                  <div className="text-sm text-muted-foreground truncate">
+                    {definition.file.filePath}
+                  </div>
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
     </div>
   );
 };
