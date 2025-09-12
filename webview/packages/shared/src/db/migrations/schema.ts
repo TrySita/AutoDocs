@@ -59,17 +59,17 @@ export const apikey = pgTable(
     userId: text("user_id").notNull(),
     refillInterval: integer("refill_interval"),
     refillAmount: integer("refill_amount"),
-    lastRefillAt: timestamp("last_refill_at", { mode: "string" }),
+    lastRefillAt: timestamp("last_refill_at", { mode: "date" }),
     enabled: boolean().default(true),
     rateLimitEnabled: boolean("rate_limit_enabled").default(true),
     rateLimitTimeWindow: integer("rate_limit_time_window").default(86400000),
     rateLimitMax: integer("rate_limit_max").default(10),
     requestCount: integer("request_count"),
     remaining: integer(),
-    lastRequest: timestamp("last_request", { mode: "string" }),
-    expiresAt: timestamp("expires_at", { mode: "string" }),
-    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
-    updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
+    lastRequest: timestamp("last_request", { mode: "date" }),
+    expiresAt: timestamp("expires_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull(),
     permissions: text(),
     metadata: text(),
   },
@@ -91,11 +91,11 @@ export const extensionTokens = pgTable(
     name: varchar({ length: 255 }).default("Extension Token"),
     lastUsedAt: timestamp("last_used_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }),
     createdAt: timestamp("created_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }).defaultNow(),
     source: varchar({ length: 50 }).default("unknown"),
   },
@@ -116,7 +116,7 @@ export const anonymousUsers = pgTable(
     lastMessageDate: date("last_message_date"),
     createdAt: timestamp("created_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }).defaultNow(),
     ipAddress: text("ip_address"),
     fingerprint: text(),
@@ -134,7 +134,7 @@ export const invitation = pgTable(
     email: text().notNull(),
     role: text(),
     status: text().default("pending").notNull(),
-    expiresAt: timestamp("expires_at", { mode: "string" }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
     inviterId: text("inviter_id").notNull(),
   },
   (table) => [
@@ -158,7 +158,7 @@ export const member = pgTable(
     organizationId: text("organization_id").notNull(),
     userId: text("user_id").notNull(),
     role: text().default("member").notNull(),
-    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull(),
   },
   (table) => [
     foreignKey({
@@ -182,7 +182,7 @@ export const messageLimits = pgTable(
     anonymousUserId: uuid("anonymous_user_id"),
     count: integer().notNull(),
     limit: integer().notNull(),
-    expiresAt: timestamp("expires_at", { mode: "string" }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
   },
   (table) => [
     foreignKey({
@@ -214,11 +214,11 @@ export const leads = pgTable(
     painPoint: text("pain_point"),
     createdAt: timestamp("created_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }).defaultNow(),
     updatedAt: timestamp("updated_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }).defaultNow(),
   },
   (table) => [unique("leads_email_key").on(table.email)]
@@ -235,15 +235,15 @@ export const account = pgTable(
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
     accessTokenExpiresAt: timestamp("access_token_expires_at", {
-      mode: "string",
+      mode: "date",
     }),
     refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
-      mode: "string",
+      mode: "date",
     }),
     scope: text(),
     password: text(),
-    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
-    updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull(),
   },
   (table) => [
     foreignKey({
@@ -262,7 +262,7 @@ export const conversations = pgTable(
     summary: text(),
     createdAt: timestamp("created_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }).defaultNow(),
     characterCount: integer("character_count").default(0).notNull(),
     anonymousUserId: uuid("anonymous_user_id"),
@@ -307,7 +307,7 @@ export const messages = pgTable(
     role: text().notNull(),
     content: text().notNull(),
     thoughtContent: text("thought_content"),
-    timestamp: timestamp({ withTimezone: true, mode: "string" }).defaultNow(),
+    timestamp: timestamp({ withTimezone: true, mode: "date" }).defaultNow(),
     includedInContext: boolean("included_in_context").default(true),
     characterCount: integer("character_count").default(0).notNull(),
   },
@@ -331,7 +331,7 @@ export const organization = pgTable(
     name: text().notNull(),
     slug: text(),
     logo: text(),
-    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull(),
     metadata: text(),
   },
   (table) => [unique("organization_slug_unique").on(table.slug)]
@@ -359,11 +359,11 @@ export const repos = pgTable(
     sortOrder: integer("sort_order").default(0),
     createdAt: timestamp("created_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }).defaultNow(),
     updatedAt: timestamp("updated_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }).defaultNow(),
     dbUrl: text("db_url"),
     dbKey: text("db_key"),
@@ -385,8 +385,8 @@ export const subscription = pgTable("subscription", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   status: text().default("incomplete"),
-  periodStart: timestamp("period_start", { mode: "string" }),
-  periodEnd: timestamp("period_end", { mode: "string" }),
+  periodStart: timestamp("period_start", { mode: "date" }),
+  periodEnd: timestamp("period_end", { mode: "date" }),
   cancelAtPeriodEnd: boolean("cancel_at_period_end"),
   seats: integer(),
 });
@@ -395,9 +395,9 @@ export const verification = pgTable("verification", {
   id: text().primaryKey().notNull(),
   identifier: text().notNull(),
   value: text().notNull(),
-  expiresAt: timestamp("expires_at", { mode: "string" }).notNull(),
-  createdAt: timestamp("created_at", { mode: "string" }),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
+  expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }),
+  updatedAt: timestamp("updated_at", { mode: "date" }),
 });
 
 export const user = pgTable(
@@ -408,8 +408,8 @@ export const user = pgTable(
     email: text().notNull(),
     emailVerified: boolean("email_verified").notNull(),
     image: text(),
-    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
-    updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull(),
     stripeCustomerId: text("stripe_customer_id"),
   },
   (table) => [unique("user_email_unique").on(table.email)]
@@ -428,11 +428,11 @@ export const publicProjects = pgTable(
     sortOrder: integer("sort_order").default(0),
     createdAt: timestamp("created_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }).defaultNow(),
     updatedAt: timestamp("updated_at", {
       withTimezone: true,
-      mode: "string",
+      mode: "date",
     }).defaultNow(),
     dbUrl: text("db_url"),
     dbKey: text("db_key"),
@@ -446,10 +446,10 @@ export const session = pgTable(
   "session",
   {
     id: text().primaryKey().notNull(),
-    expiresAt: timestamp("expires_at", { mode: "string" }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
     token: text().notNull(),
-    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
-    updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     userId: text("user_id").notNull(),
