@@ -37,6 +37,13 @@ class ScipReference:
     file: str
     range: tuple[int, int, int, int]
     role_bits: int  # raw bitset from SCIP
+    # Convenience annotations populated from role bits and symbol map
+    is_definition: bool = False  # True iff Definition role bit is set
+    # If resolvable, file where the referenced symbol is defined (repo-relative)
+    to_file: str | None = None
+    # If known, whether this occurrence is a cross-file outgoing reference
+    # (i.e., not a definition and ref.file != to_file). None if unknown.
+    is_outgoing: bool | None = None
 
 
 @dataclass
@@ -54,6 +61,7 @@ class ScipResult:
 
 
 _SEPS = "/#.:!"
+_ROLE_DEFINITION = 0x1  # matches scip.proto: SymbolRole.Definition
 
 
 def _unescape_bt(s: str) -> str:
@@ -192,10 +200,15 @@ def collect_repo_symbols_with_scip(
                 )  # may not exist in older schema
 
         # 3) Build symbol maps
+        # We collect definitions strictly from occurrences with the Definition role bit
         defined: dict[str, ScipSymbol] = {}
         files: dict[str, FileSymbols] = {}
         symbol_to_refs: dict[str, list[ScipReference]] = {}
-        defined_symbols: set[str] = set()
+        # Temporary stores while scanning documents
+        def_occurrence: dict[
+            str, tuple[str, tuple[int, int, int, int]]
+        ] = {}  # symbol -> (def_file, range)
+        symbol_names: dict[str, str] = {}  # best-effort display names
 
         # print("documents", len(merged.documents))
 
@@ -204,34 +217,27 @@ def collect_repo_symbols_with_scip(
 
             file_bucket = files.setdefault(path, FileSymbols(symbols=[], references=[]))
 
-            for sym in getattr(doc, "symbols", []):
-                s = sym.symbol
-
-                name = _pretty_name(sym)
-                if not name:
-                    res = _split_last_descriptor(s)
-                    if res:
-                        name = res[0]
-
-                occ_range, container = _find_def_occurrence_and_container(doc, s)
-
-                d = ScipSymbol(
-                    symbol=s,
-                    name=name,
-                    file=path,
-                    range=occ_range,
-                    container_symbol=container,
-                )
-
-                if path == "apps/frontend/src/atoms/chat.ts":
-                    print("symbol", d)
-
-                if s not in defined:
-                    defined[s] = d
-                    defined_symbols.add(s)
-                file_bucket.symbols.append(d)
+            # Record best-effort display names for symbols
+            doc_symbols = list(getattr(doc, "symbols", []))
+            for sym in doc_symbols:
+                s = getattr(sym, "symbol", "")
+                if not s:
+                    continue
+                if s not in symbol_names:
+                    name = _pretty_name(sym)
+                    if not name:
+                        res = _split_last_descriptor(s)
+                        if res:
+                            name = res[0]
+                    symbol_names[s] = name or ""
+            # Quick lookup: which symbols are declared in this document
+            declared_here = {getattr(sym, "symbol", "") for sym in doc_symbols if getattr(sym, "symbol", "")}
 
             # references/occurrences
+            # Track a simple preference score for where we capture the def occurrence:
+            # 2 = this document declares the symbol (preferred), 1 = plain def occurrence.
+            def_pref_score: dict[str, int] = {}
+
             for occ in getattr(doc, "occurrences", []):
                 s = getattr(occ, "symbol", "")
                 if not s or s.startswith("local "):
@@ -244,18 +250,55 @@ def collect_repo_symbols_with_scip(
                     file=path,
                     range=rng,
                     role_bits=role_bits,
+                    is_definition=bool(role_bits & _ROLE_DEFINITION),
                 )
                 file_bucket.references.append(ref)
                 symbol_to_refs.setdefault(s, []).append(ref)
+
+                # Capture true definition locations strictly from occurrences
+                if (role_bits & _ROLE_DEFINITION) != 0:
+                    # Prefer a def occurrence inside a document that actually declares the symbol
+                    new_score = 2 if s in declared_here else 1
+                    old_score = def_pref_score.get(s, 0)
+                    if s not in def_occurrence or new_score > old_score:
+                        def_occurrence[s] = (path, rng)
+                        def_pref_score[s] = new_score
+
+        # Materialize symbol_to_info and per-file symbol lists from captured defs
+        for s, (def_file, occ_range) in def_occurrence.items():
+            name = symbol_names.get(s)
+            if not name:
+                res = _split_last_descriptor(s)
+                name = res[0] if res else ""
+
+            container = None
+            if "#" in s:
+                container = s.split("#", 1)[0]
+
+            d = ScipSymbol(
+                symbol=s,
+                name=name or "",
+                file=def_file,
+                range=occ_range,
+                container_symbol=container,
+            )
+            defined[s] = d
+            files.setdefault(def_file, FileSymbols(symbols=[], references=[])).symbols.append(d)
 
         # 4) Build simple intra-repo edges (file → file for referenced symbol)
         edges: list[tuple[str, str, str]] = []
         for s, refs in symbol_to_refs.items():
             if s in defined:
-                target = defined[s].file
+                target_info = defined[s]
                 for ref in refs:
-                    if ref.file != target:
-                        edges.append((ref.file, target, s))
+                    # Skip definitions and same-file occurrences
+                    if (ref.role_bits & _ROLE_DEFINITION) != 0:
+                        continue
+                    # Annotate convenience direction fields on the occurrence
+                    ref.to_file = target_info.file
+                    ref.is_outgoing = ref.file != target_info.file
+                    if ref.file != target_info.file:
+                        edges.append((ref.file, target_info.file, s))
 
         return ScipResult(
             files=files,

@@ -177,11 +177,6 @@ class HybridParser:
         enhanced_definitions = []
 
         for definition in definitions:
-            if definition.file.file_path == "apps/frontend/src/atoms/chat.ts":
-                print(
-                    f"[Hybrid] Processing definition: {definition.name}, {definition.start_line}"
-                )
-
             mapping = mapping_by_def_id.get(definition.id)
 
             # Find all SCIP references that fall within this definition's range
@@ -260,11 +255,6 @@ class HybridParser:
                     # Target symbol not found - treat as external reference
                     external_refs.append(reference)
 
-        if file_path == "apps/frontend/src/components/chat/AssistantMessage.tsx":
-            print(f"[Hybrid] Cross-file refs for {definition.name}:")
-            for ref in cross_file_refs:
-                print(f"  - {ref.symbol} at line {ref.range[0]}")
-
         return cross_file_refs, external_refs
 
     def get_definition_references(
@@ -325,11 +315,12 @@ class HybridParser:
         for enhanced_def in enhanced_definitions:
             definition = enhanced_def.definition
 
-            # if definition.name == 'cosineSearchANN':
-            #     print('found cosineSearchANN', enhanced_def.cross_file_references)
-
             # Process cross-file references only - skip external ones for now
             for scip_ref in enhanced_def.cross_file_references:
+                # Only consider occurrences that originate in this definition's file
+                # and point to a different file (true outgoing dependency)
+                if scip_ref.is_outgoing is not True:
+                    continue  # skip same-file or unresolved
                 # Get symbol info from SCIP result
                 symbol_info = scip_result.symbol_to_info.get(scip_ref.symbol)
 

@@ -35,7 +35,7 @@ function getAncestorIds(data: INode[], id: string | number): NodeId[] {
 const buildPathMapping = (
   node: TreeNode,
   path: string = "",
-  nodePathToFileId: Map<string, number>,
+  nodePathToFileId: Map<string, number>
 ) => {
   const currentPath = path ? `${path}/${node.name}` : node.name;
   if (node.fileId) {
@@ -43,7 +43,7 @@ const buildPathMapping = (
   }
   if (node.children) {
     node.children.forEach((child: TreeNode) =>
-      buildPathMapping(child, currentPath, nodePathToFileId),
+      buildPathMapping(child, currentPath, nodePathToFileId)
     );
   }
 };
@@ -59,7 +59,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
 
   const filteredFiles = searchTerm
     ? files?.filter((file) =>
-        file.filePath.toLowerCase().includes(searchTerm.toLowerCase()),
+        file.filePath.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : files;
 
@@ -128,7 +128,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     ? getNodeIdFromFileId(selectedFileId)
     : undefined;
   const [expandedIds, setExpandedIds] = useState<NodeId[]>(
-    selectedNodeId ? getAncestorIds(data, selectedNodeId) : [],
+    selectedNodeId ? getAncestorIds(data, selectedNodeId) : []
   );
 
   useEffect(() => {
@@ -158,18 +158,6 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-2 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search files"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-8 text-sm"
-          />
-        </div>
-      </div>
-
       <div className="flex-1 overflow-auto p-2 pt-4">
         {isEmpty ? (
           <div className="h-full w-full flex items-center justify-center text-muted-foreground">
