@@ -11,7 +11,7 @@ services:
     ports: ["5432:5432"]
     volumes:
       - pg_data:/var/lib/postgresql/data
-      - ./webview/packages/shared/db/migrations:/docker-entrypoint-initdb.d
+      - ./webview/packages/shared/src/db/migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
       interval: 5s

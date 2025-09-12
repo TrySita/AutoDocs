@@ -111,33 +111,13 @@ cp .env.example .env
 
 ---
 
-2. Install web dependencies
-
-```bash
-cd webview
-pnpm install
-```
-
-3. Build the image (deps + images)
-
-```bash
-docker compose build
-```
-
-4. Run locally with Docker Compose
+2. Run locally with Docker Compose
 
 ```bash
 docker compose up -d
 
 # If you want to see logs
 docker compose up
-```
-
-5. Database migration (run once locally, and again if modifying the postgres schema)
-
-```bash
-cd packages/shared
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app pnpm drizzle-kit push --config drizzle.main.config.ts
 ```
 
 You should now have:
@@ -170,6 +150,13 @@ For a local dev loop without Docker Compose you can run the API and web dev serv
 ```bash
 # concurrent dev (API + Web + DB)
 ./tools/dev.sh --sync
+```
+
+Database migration (run if modifying the postgres schema)
+
+```bash
+cd packages/shared
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app pnpm drizzle-kit push --config drizzle.main.config.ts
 ```
 
 ## Project Layout

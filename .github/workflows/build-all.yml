@@ -1,0 +1,56 @@
+name: Compose Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: compose-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build images via docker compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure .env exists for build secrets
+        run: |
+          set -euo pipefail
+          if [ ! -f .env ]; then
+            if [ -f .env.example ]; then
+              cp .env.example .env
+            elif [ -f .env.local.example ]; then
+              cp .env.local.example .env
+            else
+              echo "No .env or example found; creating empty .env for build-time secret mount"
+              : > .env
+            fi
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1
+
+      - name: Show Docker and Compose versions
+        run: |
+          docker version
+          docker compose version
+
+      - name: Validate compose file
+        run: docker compose config --quiet
+
+      - name: Build images
+        env:
+          DOCKER_BUILDKIT: "1"
+        run: docker compose --progress=plain build --pull
+
