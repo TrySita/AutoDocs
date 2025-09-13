@@ -80,7 +80,7 @@ export const FileDependenciesGraph: React.FC<FileDependenciesGraphProps> = ({
     const nodes: Node[] = [];
     const edges: Edge[] = [];
 
-    const rootFileId = `${fileData.id}-${fileData.id}`;
+    const rootFileId = `root-${fileData.id}`;
 
     // Add main file node
     nodes.push({
@@ -194,7 +194,7 @@ export const FileDependenciesGraph: React.FC<FileDependenciesGraphProps> = ({
         onFileClick(node.data.fileId as number);
       }
     },
-    [onFileClick],
+    [onFileClick]
   );
   return (
     <div className="h-96 w-full">

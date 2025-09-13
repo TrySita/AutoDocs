@@ -1,5 +1,5 @@
 {
-  "name": "sita-onboard-faster",
+  "name": "@sita/onboard-webapp",
   "version": "0.1.0",
   "private": true,
   "lint-staged": {
@@ -28,7 +28,7 @@
     "@aws-sdk/client-sqs": "^3.864.0",
     "@aws-sdk/lib-storage": "^3.873.0",
     "@hookform/resolvers": "^5.2.1",
-    "@libsql/client": "^0.15.11",
+    "@libsql/client": "^0.15.15",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "@monaco-editor/react": "^4.7.0",
     "@opennextjs/cloudflare": "^1.6.5",
@@ -61,6 +61,7 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@sita/shared": "workspace:*",
+    "@tailwindcss/oxide-linux-arm64-gnu": "4.1.13",
     "@tanstack/react-query": "^5.85.3",
     "@tanstack/react-query-devtools": "^5.85.3",
     "@trpc/client": "^11.4.4",
@@ -87,6 +88,7 @@
     "jose": "^6.0.12",
     "jotai": "^2.13.1",
     "jotai-tanstack-query": "^0.11.0",
+    "lightningcss-linux-arm64-gnu": "1.30.1",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.539.0",
     "mcp-handler": "^1.0.2",
@@ -119,12 +121,15 @@
     "unist-util-visit": "^5.0.0",
     "uuid": "^11.1.0",
     "zod": "~3.25.76",
-    "zod-to-json-schema": "^3.24.6",
-    "lightningcss-linux-arm64-gnu": "1.30.1",
-    "@tailwindcss/oxide-linux-arm64-gnu": "4.1.13",
-    "@libsql/linux-arm64-gnu": "0.5.22"
+    "zod-to-json-schema": "^3.24.6"
   },
   "packageManager": "pnpm@10.15.0",
+  "optionalDependencies": {
+    "libsql": "0.5.22",
+    "@libsql/linux-x64-gnu": "0.5.22",
+    "@libsql/linux-arm64-gnu": "0.5.22",
+    "@libsql/darwin-arm64": "0.5.22"
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@next/eslint-plugin-next": "^15.4.6",

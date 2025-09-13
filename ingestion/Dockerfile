@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ingestion/Dockerfile
 FROM node:20-bookworm-slim AS scip-cli
 # Install once here so the final image stays slim
@@ -6,9 +7,14 @@ RUN npm install -g @sourcegraph/scip-typescript @sourcegraph/scip-python \
     && scip-typescript --help >/dev/null \
     && scip-python --help >/dev/null
 
-FROM python:3.13-slim AS base
-
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS base
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
+# Ensure installed tools can be executed out of the box
+ENV UV_TOOL_BIN_DIR=/usr/local/bin
 
 # System deps (git + build toolchain + libgit2 for pygit2)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -16,25 +22,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /api
-
 # Bring over the Node runtime and the globally installed CLIs
-COPY --from=scip-cli /usr/local/ /usr/local/
-COPY ingestion/requirements_lock.txt /tmp/requirements_lock.txt
-# If the file contains "-e .", strip it so we install your package separately:
-RUN grep -v -E '^-e[[:space:]]+\.$' /tmp/requirements_lock.txt > /tmp/requirements_no_editable.txt \
-    && pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir --require-hashes -r /tmp/requirements_no_editable.txt
+
 
 # Now add your package and install it (non-editable for prod)
-FROM python:3.13-slim AS runner
+FROM base AS runner
 WORKDIR /api
-COPY --from=base /usr/local/ /usr/local/
-COPY ingestion /api
 ENV PYTHONPATH=/api/src
 ENV PYTHONUNBUFFERED=1
+COPY --from=scip-cli /usr/local/ /usr/local/
 
-RUN --mount=type=secret,id=local_env \
-    cp /run/secrets/local_env /api/.env && pip install --no-cache-dir /api --no-deps
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --no-dev
+
+COPY . /api
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev
+ENV PATH="/api/.venv/bin:$PATH"
 
 EXPOSE 8000
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

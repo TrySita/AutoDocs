@@ -13,6 +13,7 @@ import TreeView, {
 interface FileExplorerProps {
   onFileSelect: (fileId: number) => void;
   selectedFileId?: number;
+  onSearchClick?: () => void;
 }
 interface TreeNode {
   name: string;
@@ -35,7 +36,7 @@ function getAncestorIds(data: INode[], id: string | number): NodeId[] {
 const buildPathMapping = (
   node: TreeNode,
   path: string = "",
-  nodePathToFileId: Map<string, number>,
+  nodePathToFileId: Map<string, number>
 ) => {
   const currentPath = path ? `${path}/${node.name}` : node.name;
   if (node.fileId) {
@@ -43,25 +44,17 @@ const buildPathMapping = (
   }
   if (node.children) {
     node.children.forEach((child: TreeNode) =>
-      buildPathMapping(child, currentPath, nodePathToFileId),
+      buildPathMapping(child, currentPath, nodePathToFileId)
     );
   }
 };
 
-import { Input } from "@/components/common/shadcn-components/input";
-
 const FileExplorer: React.FC<FileExplorerProps> = ({
   onFileSelect,
   selectedFileId,
+  onSearchClick,
 }) => {
-  const [searchTerm, setSearchTerm] = useState("");
   const { data: files, isLoading, error } = useFiles();
-
-  const filteredFiles = searchTerm
-    ? files?.filter((file) =>
-        file.filePath.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    : files;
 
   const buildFileTree = (files: FileResponse[]): TreeNode => {
     const root: TreeNode = { name: "", children: [] };
@@ -92,7 +85,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     return root;
   };
 
-  const fileTree = buildFileTree(filteredFiles ?? []);
+  const fileTree = buildFileTree(files ?? []);
   const data = flattenTree(fileTree);
 
   // Create a mapping from node path to file ID
@@ -128,7 +121,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     ? getNodeIdFromFileId(selectedFileId)
     : undefined;
   const [expandedIds, setExpandedIds] = useState<NodeId[]>(
-    selectedNodeId ? getAncestorIds(data, selectedNodeId) : [],
+    selectedNodeId ? getAncestorIds(data, selectedNodeId) : []
   );
 
   useEffect(() => {
@@ -154,74 +147,74 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     );
   }
 
-  const isEmpty = !filteredFiles || filteredFiles.length === 0;
+  if (!files || files.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        No files found
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-2 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search files"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-8 text-sm"
-          />
+      <div className="p-4 border-b border-border">
+        <div
+          className="relative cursor-pointer"
+          onClick={() => onSearchClick?.()}
+        >
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="pl-10 pr-4 py-2 text-sm text-muted-foreground cursor-text rounded-md border border-input transition-colors">
+            Search (⌘K)
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-2 pt-4">
-        {isEmpty ? (
-          <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-            No files found
-          </div>
-        ) : (
-          <TreeView
-            data={data}
-            aria-label="File Explorer"
-            expandedIds={expandedIds}
-            selectedIds={selectedNodeId ? [selectedNodeId] : []}
-            onNodeSelect={(props) => {
-              if (!props.isBranch) {
-                const nodePath = getNodePath(props.element);
-                const fileId = nodePathToFileId.get(nodePath);
-                if (fileId) {
-                  onFileSelect(fileId);
-                }
+      <div className="flex-1 overflow-auto p-2">
+        <TreeView
+          data={data}
+          aria-label="File Explorer"
+          expandedIds={expandedIds}
+          selectedIds={selectedNodeId ? [selectedNodeId] : []}
+          onNodeSelect={(props) => {
+            if (!props.isBranch) {
+              const nodePath = getNodePath(props.element);
+              const fileId = nodePathToFileId.get(nodePath);
+              if (fileId) {
+                onFileSelect(fileId);
               }
-            }}
-            nodeRenderer={({
-              element,
-              isBranch,
-              isExpanded,
-              getNodeProps,
-              level,
-            }) => {
-              const isSelected = selectedNodeId === element.id;
+            }
+          }}
+          nodeRenderer={({
+            element,
+            isBranch,
+            isExpanded,
+            getNodeProps,
+            level,
+          }) => {
+            const isSelected = selectedNodeId === element.id;
 
-              return (
-                <div
-                  {...getNodeProps()}
-                  className={`flex items-center space-x-2 py-1 px-2 rounded cursor-pointer hover:bg-black/10 ${
-                    isSelected ? "bg-primary/10 text-primary" : ""
-                  }`}
-                  style={{ paddingLeft: `${20 * (level - 1)}px` }}
-                >
-                  {isBranch ? (
-                    isExpanded ? (
-                      <FolderOpen className="w-4 h-4 text-blue-500" />
-                    ) : (
-                      <Folder className="w-4 h-4 text-blue-500" />
-                    )
+            return (
+              <div
+                {...getNodeProps()}
+                className={`flex items-center space-x-2 py-1 px-2 rounded cursor-pointer hover:bg-black/10 ${
+                  isSelected ? "bg-primary/10 text-primary" : ""
+                }`}
+                style={{ paddingLeft: `${20 * (level - 1)}px` }}
+              >
+                {isBranch ? (
+                  isExpanded ? (
+                    <FolderOpen className="w-4 h-4 text-blue-500" />
                   ) : (
-                    <File className="w-4 h-4 text-muted-foreground" />
-                  )}
-                  <span className="text-sm truncate">{element.name}</span>
-                </div>
-              );
-            }}
-          />
-        )}
+                    <Folder className="w-4 h-4 text-blue-500" />
+                  )
+                ) : (
+                  <File className="w-4 h-4 text-muted-foreground" />
+                )}
+                <span className="text-sm truncate">{element.name}</span>
+              </div>
+            );
+          }}
+        />
       </div>
     </div>
   );

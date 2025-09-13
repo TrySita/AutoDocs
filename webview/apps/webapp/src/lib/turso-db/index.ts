@@ -15,6 +15,7 @@ export const getAnalysisDB = (url: string) => {
 
   return {
     tursoDb: db,
+    client,
     close: () => client.close(),
   };
 };

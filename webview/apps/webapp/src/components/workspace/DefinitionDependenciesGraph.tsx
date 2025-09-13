@@ -185,7 +185,7 @@ export const DefinitionDependenciesGraph: React.FC<
     (_: React.MouseEvent, node: DefinitionRFNode) => {
       onDefinitionClick?.(node.data.definitionData);
     },
-    [onDefinitionClick],
+    [onDefinitionClick]
   );
 
   return (

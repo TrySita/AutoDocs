@@ -15,18 +15,15 @@ DECLARATION_PATTERN = """
   (function_definition
     name: (identifier) @name_function) @def_function @def
 
-  (async_function_definition
+  ;; If you want to tag async specifically, add this extra pattern:
+  (function_definition
+    "async" @kw_async
     name: (identifier) @name_function) @def_function @def
 
   ;; Decorated functions (incl. async)
   (decorated_definition
     (decorator)*
     definition: (function_definition
-      name: (identifier) @name_function)) @def_function @def
-
-  (decorated_definition
-    (decorator)*
-    definition: (async_function_definition
       name: (identifier) @name_function)) @def_function @def
 
   ;; name = lambda ...
@@ -39,16 +36,10 @@ DECLARATION_PATTERN = """
   (lambda) @def_function @def
 
   ;; ───────────── Methods (inside class bodies) ─────────────────────────────
-  ;; def/async def directly in class block
   (class_definition
     name: (identifier) @__class_placeholder
     (block
       (function_definition name: (identifier) @name_method) @def_method)) @def
-
-  (class_definition
-    name: (identifier) @__class_placeholder
-    (block
-      (async_function_definition name: (identifier) @name_method) @def_method)) @def
 
   ;; decorated methods (incl. async) in class block
   (class_definition
@@ -59,19 +50,10 @@ DECLARATION_PATTERN = """
         definition: (function_definition
           name: (identifier) @name_method)) @def_method)) @def
 
-  (class_definition
-    name: (identifier) @__class_placeholder
-    (block
-      (decorated_definition
-        (decorator)*
-        definition: (async_function_definition
-          name: (identifier) @name_method)) @def_method)) @def
-
   ;; obj.attr = lambda ...  (treat like a method-style def)
   (expression_statement
     (assignment
-      left: (attribute
-              attribute: (identifier) @name_method)
+      left: (attribute attribute: (identifier) @name_method)
       right: (lambda))) @def_method @def
 
   ;; ───────────── Classes ───────────────────────────────────────────────────
@@ -84,13 +66,11 @@ DECLARATION_PATTERN = """
       name: (identifier) @name_class)) @def_class @def
 
   ;; ───────────── Variables / Constants (non-callable assignments) ─────────
-  ;; Heuristic: ALL-CAPS identifiers → constant
   (expression_statement
     (assignment
       left: (identifier) @name_constant)) @def_constant @def
-    (#match? @name_constant "^[A-Z_][A-Z0-9_]*$")
+  (#match? @name_constant "^[A-Z_][A-Z0-9_]*$")
 
-  ;; Otherwise treat simple single-name assignment as variable
   (expression_statement
     (assignment
       left: (identifier) @name_variable)) @def_variable @def

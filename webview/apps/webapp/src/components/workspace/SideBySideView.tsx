@@ -63,7 +63,7 @@ export const SideBySideView = ({
             });
           }}
           height={docH ? `${docH}px` : "auto"} // <- match doc height
-          language="typescript"
+          language={def.file.language}
           value={definitionCode}
           theme={theme === "dark" ? "vs-dark" : "light"}
           options={{
