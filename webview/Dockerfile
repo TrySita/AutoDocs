@@ -1,37 +1,36 @@
+# syntax=docker/dockerfile:1
 # webview/Dockerfile
-FROM node:20-bookworm-slim AS deps
-WORKDIR /app
-ENV PNPM_HOME=/usr/local/share/pnpm PATH=$PNPM_HOME:$PATH
-RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
-COPY webview/pnpm-workspace.yaml ./
-COPY webview/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY webview/package.json ./
-COPY webview/apps/webapp/package.json ./apps/webapp/
-COPY webview/packages/shared/package.json ./packages/shared/
-RUN pnpm config set store-dir /pnpm/store && pnpm install --frozen-lockfile
+FROM node:20-bookworm-slim AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+COPY . /app
 
-FROM node:20-bookworm-slim AS builder
+FROM base as builder
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git python3 make g++ ca-certificates && rm -rf /var/lib/apt/lists/*
-ENV PNPM_HOME=/usr/local/share/pnpm PATH=$PNPM_HOME:$PATH
-ENV NODE_ENV=production PORT=3000
-RUN corepack enable && corepack prepare pnpm@10.15.0 --activate \
-    && pnpm config set store-dir /pnpm/store
-COPY --from=deps /pnpm/store /pnpm/store
-# now add the whole workspace and install offline from the store
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm add -g turbo@^2.5.6
+RUN turbo prune @sita/onboard-webapp --docker
+COPY . .
 
-FROM node:20-bookworm-slim AS runner
+FROM base as installer
 WORKDIR /app
-ENV PNPM_HOME=/usr/local/share/pnpm PATH=$PNPM_HOME:$PATH
-ENV NODE_ENV=production PORT=3000
-RUN corepack enable && corepack prepare pnpm@10.15.0 --activate \
-    && pnpm config set store-dir /pnpm/store
-COPY --from=builder /pnpm/store /pnpm/store
-# now add the built files
-COPY webview ./
-RUN --mount=type=secret,id=local_env \
-    cp /run/secrets/local_env /app/apps/webapp/.env && pnpm install --frozen-lockfile && pnpm build
-RUN pnpm prune --prod
-EXPOSE 3000
-CMD ["pnpm","start"]
+COPY --from=builder /app/out/json/ .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+
+COPY --from=builder /app/out/full/ .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store --mount=type=secret,id=local_env \
+    cp /run/secrets/local_env /app/apps/webapp/.env && pnpm build
+
+# RUN node -e "require.resolve('@libsql/linux-arm64-gnu')"
+
+# @todo: change to nextjs standalone after fixing libsql issue I HATE NEXTJS gimme my dist folder back
+
+FROM base AS runner
+WORKDIR /app
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+USER nextjs
+# Copy app artifacts
+COPY --from=installer --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=installer --chown=nextjs:nodejs /app/apps/webapp/ ./apps/webapp
+CMD ["sh", "-c", "cd apps/webapp && node ./node_modules/next/dist/bin/next start -p 3000"]

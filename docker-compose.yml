@@ -29,8 +29,8 @@ services:
 
   api:
     build:
-      context: .
-      dockerfile: ingestion/Dockerfile
+      context: ./ingestion
+      dockerfile: Dockerfile
       secrets:
         - local_env
     container_name: app-api
@@ -46,8 +46,8 @@ services:
 
   web:
     build:
-      context: .
-      dockerfile: webview/Dockerfile
+      context: ./webview
+      dockerfile: Dockerfile
       secrets:
         - local_env
     container_name: app-web
