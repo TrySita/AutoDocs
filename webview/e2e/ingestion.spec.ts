@@ -1,4 +1,4 @@
-import { test, expect, Page, Locator } from "@playwright/test";
+import { test, expect, Page, Locator, APIRequestContext } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -81,7 +81,7 @@ async function getHeaderFilePath(page: Page): Promise<string> {
 }
 
 test.describe.serial("Ingestion flow", () => {
-  async function isIngestionAvailable(request: any): Promise<boolean> {
+  async function isIngestionAvailable(request: APIRequestContext): Promise<boolean> {
     try {
       const res = await request.get(`${apiBase}/ingest/jobs/test`);
       return res.ok();
@@ -132,8 +132,10 @@ test.describe.serial("Ingestion flow", () => {
         `Failed to enqueue ingestion: ${enqueueRes.status()} ${text}`,
       );
     }
-    const data = (await enqueueRes.json()) as { job_id?: string };
-    expect(typeof data.job_id).toBe("string");
+    const txt = await enqueueRes.text();
+    const m = /\"job_id\"\s*:\s*\"([^\"]+)\"/.exec(txt);
+    const jobId = m ? m[1] : null;
+    expect(typeof jobId).toBe("string");
 
     // Sync button should be usable while job runs/after finish
     const scopedCard = page
