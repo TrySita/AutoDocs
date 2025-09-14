@@ -38,7 +38,7 @@ test("Add New repository derives correct slug and accepts URL", async ({ page })
   await expect(repoLinks.first()).toBeVisible();
   await expect
     .poll(async () => {
-      const hrefs = await repoLinks.evaluateAll<string[]>((els) =>
+      const hrefs = await repoLinks.evaluateAll((els) =>
         els.map((e) => e.getAttribute("href") || ""),
       );
       return hrefs.includes(REPO_URL);

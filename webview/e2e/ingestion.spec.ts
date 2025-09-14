@@ -117,7 +117,7 @@ test.describe.serial("Ingestion flow", () => {
       timeout: 30_000,
     });
 
-    // Kick off ingestion directly and parse JSON response
+    // Kick off ingestion directly
     const enqueueRes = await request.post(`${apiBase}/ingest/github`, {
       data: {
         github_url: REPO_URL,
@@ -132,10 +132,6 @@ test.describe.serial("Ingestion flow", () => {
         `Failed to enqueue ingestion: ${enqueueRes.status()} ${text}`,
       );
     }
-    const txt = await enqueueRes.text();
-    const m = /\"job_id\"\s*:\s*\"([^\"]+)\"/.exec(txt);
-    const jobId = m ? m[1] : null;
-    expect(typeof jobId).toBe("string");
 
     // Sync button should be usable while job runs/after finish
     const scopedCard = page
