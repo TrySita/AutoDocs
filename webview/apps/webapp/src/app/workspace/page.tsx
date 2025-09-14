@@ -302,6 +302,7 @@ function ProjectCard({
             ? "opacity-90"
             : "hover:bg-muted/50 hover:border-muted-foreground/20"
         }`}
+        data-testid="project-card"
       >
         {/* Header row */}
         <div className="flex items-start justify-between p-4 pb-2">

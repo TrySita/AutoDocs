@@ -56,6 +56,7 @@ const FloatingChatIcon: React.FC<FloatingChatIconProps> = ({
         <Button
           className="w-full h-full rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-colors duration-200"
           title="AI Chat Assistant"
+          data-testid="open-chat"
           onMouseDown={(e) => e.preventDefault()} // Prevent button click during drag
         >
           <MessageCircle className="w-6 h-6" />

@@ -193,6 +193,7 @@ export const DefinitionDependenciesGraph: React.FC<
       <div className="h-full w-full border">
         <ReactFlow<DefinitionRFNode>
           key={`definition-${definition?.id ?? "no-definition-yet"}`}
+          data-testid="definition-graph"
           nodes={definitionNodes}
           edges={definitionEdges}
           onNodesChange={onDefinitionNodesChange}

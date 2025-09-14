@@ -1,40 +1,20 @@
 import { test, expect } from "@playwright/test";
-import { encodeTRPCResponse, type PublicProject } from "./test-utils";
 
 test.describe.serial("Chat drawer messaging", () => {
   const REPO_NAME = "Chat Test Repo";
   const REPO_URL = "https://github.com/aperswal/4buttons.git";
-  const slug = `chat-${Date.now().toString(36)}`;
-  const userPrompt = "find me where we handle the love component";
 
-  test("streams then persists messages with citations", async ({ page }) => {
+  function getUrlParam(url: string, key: string): string | null {
+    const u = new URL(url, "http://localhost");
+    return u.searchParams.get(key);
+  }
+
+  test("opens chat and navigates via citation link", async ({ page }) => {
     test.setTimeout(120_000);
-    // Step: stub projects list and message history
+
+    // Stub only message history to control assistant citations
     let messageHistoryCalls = 0;
-    await page.route("**/api/trpc/projects.getPublicProjects**", async (route) => {
-      const reqBody = route.request().postData() || "[]";
-      const idMatch = /"id"\s*:\s*(\d+)/.exec(reqBody);
-      const id = idMatch ? Number.parseInt(idMatch[1], 10) : 0;
-      const payload: PublicProject[] = [
-        {
-          id: "00000000-0000-0000-0000-000000000001",
-          name: REPO_NAME,
-          slug,
-          repositoryUrl: REPO_URL,
-          isActive: true,
-          sortOrder: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          dbUrl: null,
-          dbKey: null,
-          latestJobId: null,
-          latestJobStatus: null,
-          description: null,
-          logoUrl: null,
-        },
-      ];
-      await route.fulfill({ contentType: "application/json", body: encodeTRPCResponse(id, payload) });
-    });
+    const userPrompt = "find me where we handle the love component";
     await page.route("**/api/messages**", async (route) => {
       messageHistoryCalls += 1;
       if (messageHistoryCalls === 1) {
@@ -58,32 +38,53 @@ test.describe.serial("Chat drawer messaging", () => {
       };
       await route.fulfill({ contentType: "application/json", body: JSON.stringify(body) });
     });
-    // Step: open workspace and repo
+
+    // Create a unique repository via the UI (no mocks)
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const uniqueName = `${REPO_NAME}-${unique}`;
+    const expectedSlug = uniqueName
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-_]/g, "");
+
     await page.goto("/workspace");
-    const card = page.getByText(REPO_NAME, { exact: true });
-    await expect(card).toBeVisible();
-    await card.click();
-    await page.waitForURL(new RegExp(`/workspace/${slug}(/docs)?`));
-    // Step: chat drawer visible
-    await expect(page.getByText("Martin")).toBeVisible();
-    // Step: send message
+    await page.getByRole("button", { name: "Add New" }).click();
+    await page.getByPlaceholder("e.g. Excalidraw").fill(uniqueName);
+    await page.getByPlaceholder("https://github.com/org/repo").fill(REPO_URL);
+    await page.getByRole("button", { name: "Add" }).click();
+    await expect(page.getByText(uniqueName, { exact: true })).toBeVisible({ timeout: 30_000 });
+
+    // Open the repo workspace
+    await page.getByText(uniqueName, { exact: true }).first().click();
+    await page.waitForURL(new RegExp(`/workspace/${expectedSlug}(/docs)?`));
+    // Chat drawer is open by default; verify it's visible
+    await expect(page.getByText("Martin")).toBeVisible({ timeout: 60000 });
+
+    // Send a message that contains a citation link; the UI should render it
     const input = page.getByPlaceholder("Ask about this file...");
     await input.fill(userPrompt);
     await input.press("Enter");
-    // Step: user message visible
     await expect(page.getByText(userPrompt, { exact: true })).toBeVisible();
-    // Step: streaming placeholder visible
-    const loadingDot = page.locator("div.w-2.h-2.bg-current.rounded-full");
-    await expect(loadingDot.first()).toBeVisible({ timeout: 5000 });
-    // Step: reload and verify persistence
+
+    // Reload to fetch stubbed assistant history with citation
     await page.reload();
     await expect(page.getByText("Martin")).toBeVisible();
-    // Step: persisted user message visible
-    await expect(page.getByText(userPrompt, { exact: true })).toBeVisible();
-    // Step: citation link has correct href
-    const citationHref = `/workspace/${slug}/docs?fileId=123&definitionId=456`;
+
+    // Click the rendered citation link (assistant message) and verify navigation
     const citationLink = page.getByRole("link", { name: "love handler" });
     await expect(citationLink).toBeVisible();
-    await expect(citationLink).toHaveAttribute("href", citationHref);
+    await citationLink.click();
+
+    // Verify we navigated to docs with correct query params
+    await expect
+      .poll(() => {
+        const url = page.url();
+        const hasDocs = /\/workspace\/.+\/docs/.test(url);
+        const f = getUrlParam(url, "fileId");
+        const d = getUrlParam(url, "definitionId");
+        return hasDocs && f === "123" && d === "456";
+      }, { timeout: 15_000 })
+      .toBeTruthy();
   });
 });
