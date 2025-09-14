@@ -40,7 +40,6 @@ const SelectedDefinitionBadge = ({
 
 const ChatDrawer: React.FC<ChatDrawerProps> = ({ isOpen, onClose }) => {
   const [inputValue, setInputValue] = useState("");
-  const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -62,10 +61,6 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({ isOpen, onClose }) => {
     // Always allow sending messages (no auth required)
     handleSendMessage(inputValue.trim());
     setInputValue("");
-  };
-
-  const navigateToChat = () => {
-    router.push("/workspace/martin");
   };
 
   // Refetch messages when drawer opens
@@ -94,15 +89,6 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({ isOpen, onClose }) => {
             <h3 className="text-lg font-semibold text-foreground">Martin</h3>
           </div>
           <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={navigateToChat}
-              className="h-8 w-8 p-0"
-              title="Open full chat page"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </Button>
             <Button
               variant="ghost"
               size="sm"
