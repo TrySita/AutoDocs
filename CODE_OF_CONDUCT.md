@@ -57,7 +57,7 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainers at coc@openautodocs.dev.
+reported to the project maintainers at sohan.sarabu@gmail.com or adityaperswal@gmail.com.
 
 If you maintain this project, replace this email with a monitored mailbox. If
 email is not possible, you may open an issue and tag it clearly as “conduct”.
