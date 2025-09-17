@@ -34,17 +34,17 @@
 
 # AutoDocs, by [Sita](https://trysita.com)
 
-Automate documentation for any repo: we traverse your codebase, parse the AST, build a dependency graph, and walk that graph to generate accurate, high‑signal docs. A built‑in MCP server lets coding agents deep‑search your code via HTTP.
+Automate documentation for any repo: we traverse your codebase, parse the AST, build a dependency graph, and walk that graph to generate accurate, high-signal docs. A built-in MCP server lets coding agents deep-search your code via HTTP.
 
 (Interested in our hosted or enterprise offerings? Join the waitlist at https://trysita.com)
 
 ## What This Repo Does
 
-- Parses your repository using [tree‑sitter](https://github.com/tree-sitter/tree-sitter) (AST parsing) and SCIP (symbol resolution).
+- Parses your repository using [tree-sitter](https://github.com/tree-sitter/tree-sitter) (AST parsing) and SCIP (symbol resolution).
 - Constructs a code dependency graph (files, definitions, calls, imports) and topologically sorts the dependency order.
-- Traverses that graph to create repository‑wide, dependency‑aware documentation and summaries.
+- Traverses that graph to create repository-wide, dependency-aware documentation and summaries.
 - Exposes a FastAPI backend for ingestion/search and a Next.js web UI for chat and exploration.
-- Provides an MCP server at so agentic tools can query your repo with deep search.
+- Provides an MCP server so agentic tools can query your repo with deep search.
 
 ---
 
@@ -127,15 +127,15 @@ You should now have:
 
 ## Updating Docs
 
-To refresh a repository’s docs after code changes, remove the repo and re‑ingest it (temporary workflow):
+To refresh a repository’s docs after code changes, remove the repo and re-ingest it (temporary workflow):
 
 - UI: delete the repo in your Workspace, then add it again (ingestion starts automatically).
 
-We’re actively adding a one‑click "Resync" button in the UI, followed by automatic periodic ingestion (coming soon)
+We’re actively adding a one-click "Resync" button in the UI, followed by automatic periodic ingestion (coming soon)
 
 ## Using the MCP Server
 
-The MCP server is available at `http://localhost:3000/api/mcp` and is designed for coding agents and MCP‑compatible clients. It exposes a `codebase-qna` tool that answers repository‑scoped questions by querying the analysis databases that AutoDocs produces.
+The MCP server is available at `http://localhost:3000/api/mcp` and is designed for coding agents and MCP-compatible clients. It exposes a `codebase-qna` tool that answers repository-scoped questions by querying the analysis databases that AutoDocs produces.
 
 Tips
 
