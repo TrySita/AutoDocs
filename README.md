@@ -1,5 +1,9 @@
 ![Sita Github Banner](https://raw.githubusercontent.com/TrySita/AutoDocs/refs/heads/main/assets/sita-og.png)
 
+## Follow Us
+- **Sohan** - [@SohanSarabu](https://x.com/SohanSarabu)
+- **Adi** - [@adiperswal](https://x.com/adiperswal)
+
 <div align="center">
    <div>
       <a href="https://docs.trysita.com"><strong>Docs</strong></a> ·
