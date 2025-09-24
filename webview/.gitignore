@@ -53,3 +53,10 @@ next-env.d.ts
 !.env.local.example
 
 **.turbo
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
