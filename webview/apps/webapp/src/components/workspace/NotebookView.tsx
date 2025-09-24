@@ -5,9 +5,8 @@ import { Button } from "@/components/common/shadcn-components/button";
 import { Card, CardContent } from "@/components/common/shadcn-components/card";
 // Removed Dialog (Docs/PRs) UI
 import ReactMarkdown from "react-markdown";
-import remarkCitations, {
-  CitationProperties,
-} from "@/lib/utils/remarkCitations";
+import remarkCitations from "@/lib/utils/remarkCitations";
+import { mdCiteRenderer } from "../chat/CiteRenderer";
 // Removed unused tabs imports
 import { useCustomSearchParams } from "@/hooks/useSearchParams";
 import { Editor } from "@monaco-editor/react";
@@ -27,7 +26,7 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
-import { CitationLink } from "../chat/CitationLink";
+// Render <cite> nodes via a custom renderer
 import { citationSanitizeSchema } from "@/lib/markdown/sanitizeSchema";
 import { DefinitionDependenciesGraph } from "./DefinitionDependenciesGraph";
 import { FileDependenciesGraph } from "./FileDependenciesGraph";
@@ -335,11 +334,7 @@ const NotebookView = forwardRef<
                           rehypeRaw,
                           [rehypeSanitize, citationSanitizeSchema],
                         ]}
-                        components={{
-                          citation: (citation: CitationProperties) => (
-                            <CitationLink citation={citation} />
-                          ),
-                        }}
+                        components={{ cite: mdCiteRenderer }}
                       >
                         {fileData.aiSummary}
                       </ReactMarkdown>
