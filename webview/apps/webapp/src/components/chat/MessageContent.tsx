@@ -28,7 +28,6 @@ export function MessageContent({
           rehypePlugins={[rehypeHighlight]}
           components={{
             // Handle custom citation nodes created by our remark plugin
-            // @ts-expect-error: ReactMarkdown doesn't recognize custom components
             citation: (citation: CitationProperties) => {
               return <CitationLink citation={citation} />;
               // return ;

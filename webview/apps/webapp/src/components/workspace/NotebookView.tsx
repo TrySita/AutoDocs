@@ -5,7 +5,9 @@ import { Button } from "@/components/common/shadcn-components/button";
 import { Card, CardContent } from "@/components/common/shadcn-components/card";
 // Removed Dialog (Docs/PRs) UI
 import ReactMarkdown from "react-markdown";
-import remarkCitations from "@/lib/utils/remarkCitations";
+import remarkCitations, {
+  CitationProperties,
+} from "@/lib/utils/remarkCitations";
 // Removed unused tabs imports
 import { useCustomSearchParams } from "@/hooks/useSearchParams";
 import { Editor } from "@monaco-editor/react";
@@ -334,8 +336,8 @@ const NotebookView = forwardRef<
                           [rehypeSanitize, citationSanitizeSchema],
                         ]}
                         components={{
-                          citation: (props: { citation: string }) => (
-                            <CitationLink citation={props.citation} />
+                          citation: (citation: CitationProperties) => (
+                            <CitationLink citation={citation} />
                           ),
                         }}
                       >

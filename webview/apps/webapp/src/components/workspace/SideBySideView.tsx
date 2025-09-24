@@ -4,7 +4,9 @@ import { DefinitionResponse } from "@/types/codebase";
 import { Editor, OnMount } from "@monaco-editor/react";
 import { useLayoutEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkCitations from "@/lib/utils/remarkCitations";
+import remarkCitations, {
+  CitationProperties,
+} from "@/lib/utils/remarkCitations";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
@@ -107,8 +109,8 @@ export const SideBySideView = ({
                 [rehypeSanitize, citationSanitizeSchema],
               ]}
               components={{
-                citation: (props: { children?: React.ReactNode }) => (
-                  <CitationLink citation={props} />
+                citation: (citation: CitationProperties) => (
+                  <CitationLink citation={citation} />
                 ),
               }}
             >
