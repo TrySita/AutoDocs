@@ -102,10 +102,14 @@ export const SideBySideView = ({
           <div className="markdown mt-0 pt-0">
             <ReactMarkdown
               remarkPlugins={[remarkCitations, remarkGfm, remarkBreaks]}
-              rehypePlugins={[rehypeRaw, [rehypeSanitize, citationSanitizeSchema]]}
+              rehypePlugins={[
+                rehypeRaw,
+                [rehypeSanitize, citationSanitizeSchema],
+              ]}
               components={{
-                // @ts-expect-error custom element mapping
-                citation: (props) => <CitationLink citation={props} />,
+                citation: (props: { children?: React.ReactNode }) => (
+                  <CitationLink citation={props} />
+                ),
               }}
             >
               {def.aiSummary}

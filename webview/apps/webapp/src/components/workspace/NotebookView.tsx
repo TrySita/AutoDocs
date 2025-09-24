@@ -324,11 +324,19 @@ const NotebookView = forwardRef<
                   {fileData.aiSummary && (
                     <div className="markdown pt-10 prose prose-sm max-w-none">
                       <ReactMarkdown
-                        remarkPlugins={[remarkCitations, remarkGfm, remarkBreaks]}
-                        rehypePlugins={[rehypeRaw, [rehypeSanitize, citationSanitizeSchema]]}
+                        remarkPlugins={[
+                          remarkCitations,
+                          remarkGfm,
+                          remarkBreaks,
+                        ]}
+                        rehypePlugins={[
+                          rehypeRaw,
+                          [rehypeSanitize, citationSanitizeSchema],
+                        ]}
                         components={{
-                          // @ts-expect-error custom element mapping
-                          citation: (props) => <CitationLink citation={props} />,
+                          citation: (props: { citation: string }) => (
+                            <CitationLink citation={props.citation} />
+                          ),
                         }}
                       >
                         {fileData.aiSummary}
