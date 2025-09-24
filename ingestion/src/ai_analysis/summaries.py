@@ -154,13 +154,67 @@ def clear_summary_caches() -> None:
 
 
 def get_file_prompt(file: FileModel) -> str:
-    """Generate the prompt for file-level summary generation."""
+    """Generate the prompt for file-level summary generation.
+
+    Adds an ID catalog so the LLM can produce explicit citations that the
+    web client converts into navigable links.
+    """
 
     if not file.file_content:
         raise ValueError("File content is missing")
 
+    # Build ID catalogs for citations
+    definitions_catalog = "\n".join(
+        [
+            f" - def_id={d.id} | {d.definition_type} {d.name}"
+            for d in (file.definitions or [])
+        ]
+    )
+
+    # Gather connected files (both directions) if available
+    connected_files: set[tuple[int, str]] = set()
+    try:
+        for dep in getattr(file, "file_dependencies", []) or []:  # from -> to
+            if dep.to_file:
+                connected_files.add((dep.to_file.id, dep.to_file.file_path))
+        for dep in getattr(file, "file_dependents", []) or []:  # other -> this
+            if dep.from_file:
+                connected_files.add((dep.from_file.id, dep.from_file.file_path))
+    except Exception:
+        # Be resilient to lazy-loading/session edge cases
+        pass
+
+    connected_files_catalog = "\n".join(
+        [f" - file_id={fid} | {fpath}" for fid, fpath in sorted(connected_files)]
+    )
+
+    # Definitions this file's symbols reference (may span other files)
+    external_defs: set[tuple[int, int, str, str]] = set()
+    try:
+        for d in (file.definitions or []):
+            for ref in getattr(d, "references", []) or []:
+                if ref.target_definition:
+                    external_defs.add(
+                        (
+                            ref.target_definition.id,
+                            ref.target_definition.file.id,
+                            ref.target_definition.definition_type,
+                            ref.target_definition.name,
+                        )
+                    )
+    except Exception:
+        pass
+
+    external_defs_catalog = "\n".join(
+        [
+            f" - dep_def_id={def_id} | {def_type} {def_name} (file_id={dep_file_id})"
+            for (def_id, dep_file_id, def_type, def_name) in sorted(external_defs)
+        ]
+    )
+
     FILE_PROMPT = f"""
         # CONTEXT (verbatim; do NOT alter)
+        FILE_ID: {file.id}
         FILE_PATH: {file.file_path}
 
         ## Raw Source
@@ -173,20 +227,65 @@ def get_file_prompt(file: FileModel) -> str:
         Use them to avoid repeating definition‑level detail and to determine the file's overall intent.
 
         {[f"{d.definition_type} '{d.name}': {d.ai_summary}\n\n" for d in file.definitions]}
+
+        ## ID Catalog for Citations
+        Use the following IDs to produce markdown links that cite files/definitions explicitly.
+        - When you mention THIS file, you MAY cite it as: [short text](file::{file.id})
+        - When you mention a definition from this file, cite it as: [Name](file::{file.id}:definition::{'{'}DEF_ID{'}'})
+        - When you mention a CONNECTED file, cite it as: [short text](file::FILE_ID)
+        - When you mention a referenced definition from the catalog below, cite it as: [Name](file::{'{'}DEP_FILE_ID{'}'}:definition::{'{'}DEP_DEF_ID{'}'})
+        - Only cite items that appear in these catalogs. Do not invent IDs.
+
+        ### Definitions in this file
+        {definitions_catalog or "- <none>"}
+
+        ### Connected files (imports/usage)
+        {connected_files_catalog or "- <none>"}
+
+        ### Referenced definitions (across files)
+        {external_defs_catalog or "- <none>"}
     """
 
     return FILE_PROMPT
 
 
 def get_definition_prompt(definition: DefinitionModel) -> str:
-    """Generate the prompt for definition-level summary generation."""
+    """Generate the prompt for definition-level summary generation.
+
+    Adds an ID catalog so the LLM can produce explicit citations that the
+    web client converts into navigable links.
+    """
 
     if not definition.source_code:
         raise ValueError("Definition source code is missing")
 
+    # Build catalogs for citations
+    # Direct dependencies (resolved references only)
+    dep_catalog_lines: list[str] = []
+    for ref in getattr(definition, "references", []) or []:
+        if ref.target_definition:
+            dep_catalog_lines.append(
+                f" - dep_def_id={ref.target_definition.id} | {ref.target_definition.definition_type} {ref.target_definition.name} (file_id={ref.target_definition.file.id})"
+            )
+    dep_catalog = "\n".join(dep_catalog_lines)
+
+    # Siblings in the same file (helpful for local citations)
+    try:
+        siblings_catalog = "\n".join(
+            [
+                f" - def_id={d.id} | {d.definition_type} {d.name}"
+                for d in (definition.file.definitions or [])
+                if d.id != definition.id
+            ]
+        )
+    except Exception:
+        siblings_catalog = ""
+
     DEFINITION_PROMPT = f"""
         # CONTEXT (verbatim; do NOT alter)
+        FILE_ID: {definition.file.id}
         FILE_PATH: {definition.file.file_path}
+        DEFINITION_ID: {definition.id}
         DEFINITION_NAME: {definition.name}
         DEFINITION_TYPE: {definition.definition_type}
 
@@ -201,6 +300,19 @@ def get_definition_prompt(definition: DefinitionModel) -> str:
         Use them to avoid repeating dependency‑level detail and to focus on the definition's purpose.
 
         {[f" - '{d.reference_name}': {d.target_definition.ai_summary}\n\n" for d in definition.references if d.target_definition]}
+
+        ## ID Catalog for Citations
+        Use the following IDs to produce markdown links that cite files/definitions explicitly.
+        - When you mention THIS definition, you MAY cite it as: [short text](file::{definition.file.id}:definition::{definition.id})
+        - When you mention another definition from the same file, cite it as: [Name](file::{definition.file.id}:definition::{'{'}DEF_ID{'}'})
+        - When you mention a dependency below, cite it as: [Name](file::{'{'}DEP_FILE_ID{'}'}:definition::{'{'}DEP_DEF_ID{'}'})
+        - Only cite items that appear in these catalogs. Do not invent IDs.
+
+        ### Direct dependency IDs
+        {dep_catalog or "- <none>"}
+
+        ### Sibling definitions (same file)
+        {siblings_catalog or "- <none>"}
     """
 
     return DEFINITION_PROMPT
@@ -241,6 +353,13 @@ async def generate_file_summary_with_llm(file: FileModel) -> tuple[str, str]:
         4. **External dependencies.** Summarize imported packages / local modules (package name only) and *why* they’re needed.
         5. **Important implementation details.** Edge‑cases handled, assumptions made, error‑handling strategy, etc.
         6. **Usage guidance (optional if obvious).** One or two sentences on how downstream code should consume this module or what guarantees it exposes.
+
+        # CITATIONS
+        • When you mention a file or definition that appears in the provided ID Catalog, include a markdown link whose URL is one of:
+          - `file::FILE_ID`
+          - `file::FILE_ID:definition::DEF_ID`
+        • Use a short, human‑readable link text (e.g., definition name or filename).
+        • Do not invent IDs; only cite items present in the catalog.
 
         # STYLE GUIDELINES
         • **Stay under 200 words** unless the file is unusually complex.
@@ -362,6 +481,13 @@ async def generate_definition_summary_with_llm(
         4. **Dependencies explained.** For each item in the dependency map that truly matters, explain *why* it’s used – keep it concise.
         5. **Usage guidance (optional if obvious).** How should callers use this symbol safely? Any caveats?
         6. **Edge‑cases & assumptions.** List notable constraints, default values, or failure modes.
+
+        # CITATIONS
+        • When you mention this definition, any sibling definitions, or direct dependencies listed in the ID Catalog, include a markdown link whose URL is one of:
+          - `file::{'{'}FILE_ID{'}'}:definition::{'{'}DEF_ID{'}'}` (for definitions)
+          - `file::{'{'}FILE_ID{'}'}` (for files when appropriate)
+        • Use the human‑readable name as link text.
+        • Do not invent IDs; only cite items present in the catalog.
 
         # STYLE GUIDELINES
         • **Target ≤ 120 words** unless the definition is complex.
