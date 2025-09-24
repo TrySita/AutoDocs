@@ -6,7 +6,8 @@ import { SKIP, visit } from "unist-util-visit";
 export interface CitationNode {
   type: "citation";
   data: {
-    hName: "citation";
+    // Render as the standard HTML <cite> element for better typing
+    hName: "cite";
     hProperties: {
       text: string;
       citationType: "file" | "definition";
@@ -36,7 +37,7 @@ const remarkCitations: Plugin<[], Root> = () => {
       const citationNode: CitationNode = {
         type: "citation",
         data: {
-          hName: "citation",
+          hName: "cite",
           hProperties: {
             text,
             citationType: definitionId ? "definition" : "file",

@@ -4,10 +4,13 @@ import { DefinitionResponse } from "@/types/codebase";
 import { Editor, OnMount } from "@monaco-editor/react";
 import { useLayoutEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkCitations from "@/lib/utils/remarkCitations";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import { mdCiteRenderer } from "../chat/CiteRenderer";
+import { citationSanitizeSchema } from "@/lib/markdown/sanitizeSchema";
 
 export const SideBySideView = ({
   def,
@@ -98,8 +101,12 @@ export const SideBySideView = ({
         {def.aiSummary && (
           <div className="markdown mt-0 pt-0">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkBreaks]}
-              rehypePlugins={[rehypeRaw, rehypeSanitize]}
+              remarkPlugins={[remarkCitations, remarkGfm, remarkBreaks]}
+              rehypePlugins={[
+                rehypeRaw,
+                [rehypeSanitize, citationSanitizeSchema],
+              ]}
+              components={{ cite: mdCiteRenderer }}
             >
               {def.aiSummary}
             </ReactMarkdown>
