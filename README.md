@@ -45,7 +45,7 @@ Automate documentation for any repo: we traverse your codebase, parse the AST, b
 ## What This Repo Does
 
 - Parses your repository using [tree-sitter](https://github.com/tree-sitter/tree-sitter) (AST parsing) and SCIP (symbol resolution).
-- Constructs a code dependency graph (files, definitions, calls, imports) and topologically sorts the dependency order.
+- Constructs a code dependency graph (files, definitions, calls, imports) and topologically sorts the dependencies.
 - Traverses that graph to create repository-wide, dependency-aware documentation and summaries.
 - Exposes a FastAPI backend for ingestion/search and a Next.js web UI for chat and exploration.
 - Provides an MCP server so agentic tools can query your repo with deep search.
