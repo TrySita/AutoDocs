@@ -55,7 +55,7 @@ export default function WorkspaceLayout({
           </nav>
         </div>
       </aside>
-      <main className={`flex-1`}>{children}</main>
+      <main className={`flex-1 overflow-y-auto min-h-0`}>{children}</main>
     </div>
   );
 }
