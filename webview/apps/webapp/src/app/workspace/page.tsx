@@ -53,7 +53,7 @@ export default function CodebasesPage() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: listQueryKey });
       },
-    })
+    }),
   );
 
   const { mutateAsync: addProject } = useMutation(
@@ -61,7 +61,7 @@ export default function CodebasesPage() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: listQueryKey });
       },
-    })
+    }),
   );
 
   const filtered = useMemo(() => {
@@ -71,7 +71,7 @@ export default function CodebasesPage() {
       publicProjects?.filter((p) =>
         [p.name, p.slug, p.description]
           .filter(Boolean)
-          .some((s) => String(s).toLowerCase().includes(q))
+          .some((s) => String(s).toLowerCase().includes(q)),
       ) || []
     );
   }, [publicProjects, search]);
@@ -95,7 +95,10 @@ export default function CodebasesPage() {
             />
           </div>
           {/* Add New modal trigger */}
-          <AddProjectDialog onAdd={addProject} />
+          <AddProjectDialog
+            onAdd={addProject}
+            existingSlugs={publicProjects?.map((p) => p.slug) || []}
+          />
         </div>
       </div>
       <motion.div
@@ -135,15 +138,18 @@ export default function CodebasesPage() {
 
 function AddProjectDialog({
   onAdd,
+  existingSlugs,
 }: {
   onAdd: (
-    input: inferRouterInputs<AppRouter>["projects"]["addPublicProject"]
+    input: inferRouterInputs<AppRouter>["projects"]["addPublicProject"],
   ) => Promise<unknown>;
+  existingSlugs: string[];
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [repositoryUrl, setRepositoryUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // derive slug from name: lowercase, spaces -> hyphens, remove invalid chars
   const derivedSlug = name
@@ -160,6 +166,13 @@ function AddProjectDialog({
 
   const submit = async () => {
     if (!canSave) return;
+    // Client-side duplicate check (by derived slug)
+    if (existingSlugs.includes(derivedSlug)) {
+      setError(
+        "A repository with this name already exists. Try a different name.",
+      );
+      return;
+    }
     setSaving(true);
     try {
       await onAdd({
@@ -171,6 +184,7 @@ function AddProjectDialog({
       setOpen(false);
       setName("");
       setRepositoryUrl("");
+      setError(null);
     } catch (e) {
       console.error("Add project failed", e);
     } finally {
@@ -196,7 +210,10 @@ function AddProjectDialog({
             <label className="text-sm">Repository Name</label>
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="e.g. Excalidraw"
             />
           </div>
@@ -204,13 +221,17 @@ function AddProjectDialog({
             <label className="text-sm">Repository URL</label>
             <Input
               value={repositoryUrl}
-              onChange={(e) => setRepositoryUrl(e.target.value)}
+              onChange={(e) => {
+                setRepositoryUrl(e.target.value);
+                if (error) setError(null);
+              }}
               placeholder="https://github.com/org/repo"
             />
           </div>
           <p className="text-xs text-muted-foreground mt-2">
             Slug: <span className="font-mono">{derivedSlug || "—"}</span>
           </p>
+          {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
         </div>
         <DialogFooter>
           <Button
@@ -270,7 +291,7 @@ function ProjectCard({
     trpc.projects.reingestPublicProject.mutationOptions({
       onSuccess: () =>
         queryClient.invalidateQueries({ queryKey: listQueryKey }),
-    })
+    }),
   );
 
   return (
@@ -281,6 +302,7 @@ function ProjectCard({
             ? "opacity-90"
             : "hover:bg-muted/50 hover:border-muted-foreground/20"
         }`}
+        data-testid="project-card"
       >
         {/* Header row */}
         <div className="flex items-start justify-between p-4 pb-2">
@@ -391,7 +413,7 @@ function ProjectCard({
           {/* Footer actions */}
           <div className="mt-4 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              {/* <Button
+              <Button
                 size="sm"
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -406,7 +428,7 @@ function ProjectCard({
               >
                 <RotateCw className="w-4 h-4 mr-1" />
                 {isBusy ? "Ingesting…" : "Sync"}
-              </Button> */}
+              </Button>
             </div>
 
             <Button

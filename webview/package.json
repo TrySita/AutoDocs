@@ -16,11 +16,12 @@
     "start": "turbo start",
     "lint": "turbo lint"
   },
-  "dependencies": {},
   "packageManager": "pnpm@10.15.0",
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@next/eslint-plugin-next": "^15.4.6",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.3.0",
     "eslint-config-next": "15.4.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "husky": "^9.1.7",

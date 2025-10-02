@@ -201,6 +201,7 @@ export const FileDependenciesGraph: React.FC<FileDependenciesGraphProps> = ({
       <div className="h-full w-full border rounded-lg">
         <ReactFlow
           id="file-graph"
+          data-testid="file-graph"
           nodes={fileNodes}
           proOptions={{
             hideAttribution: true,
