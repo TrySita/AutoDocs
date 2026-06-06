@@ -3,12 +3,20 @@
 import { currentRepoSlugAtom } from "@/lib/atoms/workspace";
 import { useTRPC } from "@/lib/trpc/client";
 import { useQuery } from "@tanstack/react-query";
+import { TRPCClientError } from "@trpc/client";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import type { components } from "@/types/api";
 
 type APIJobStatus = components["schemas"]["JobStatusResponse"]["status"];
 type APIJobProgress = components["schemas"]["JobStatusResponse"]["progress"];
+
+// True when the job-status query failed because the API reported the job as
+// unknown (404 -> tRPC NOT_FOUND). The in-memory job queue loses jobs across
+// API restarts, so a previously-enqueued job can vanish; callers must treat
+// this as terminal and not keep polling a job that will never come back.
+export const isJobNotFoundError = (error: unknown): boolean =>
+  error instanceof TRPCClientError && error.data?.code === "NOT_FOUND";
 
 export const JOB_PROGRESS_ORDER: readonly APIJobProgress[] = [
   "queued",
@@ -38,8 +46,14 @@ export const useIngestionStatus = (
   const query = useQuery({
     ...trpc.ingestion.jobStatus.queryOptions({ jobId: jobId! }),
     enabled,
-    refetchInterval: enabled ? interval : false,
+    // A NOT_FOUND job is gone for good; don't retry it and stop the poll loop so
+    // we don't hammer the API with a 404 every interval forever.
+    retry: (_failureCount, error) => !isJobNotFoundError(error),
+    refetchInterval: (q) =>
+      enabled && !isJobNotFoundError(q.state.error) ? interval : false,
   });
+
+  const jobLost = isJobNotFoundError(query.error);
 
   const phaseInfo = useMemo(() => {
     const progress = (query.data?.progress || "queued") as APIJobProgress;
@@ -49,7 +63,7 @@ export const useIngestionStatus = (
     return { progressText: progress, percent: pct };
   }, [query.data?.progress]);
 
-  return { ...query, jobId, ...phaseInfo };
+  return { ...query, jobId, jobLost, ...phaseInfo };
 };
 
 export const useFiles = (params?: {

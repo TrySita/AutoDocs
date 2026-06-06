@@ -86,10 +86,7 @@ export function ToolCall({ toolCall }: ToolCallProps) {
                       </div>
                       {isDev() && (
                         <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                          <span>Limit: {search.limit || 5}</span>
-                          <span>
-                            Threshold: {search.similarity_threshold || 0.1}
-                          </span>
+                          <span>k: {search.k ?? 10}</span>
                         </div>
                       )}
                     </div>

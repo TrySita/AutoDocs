@@ -4,8 +4,15 @@ This module implements recursive summary generation that respects dependency
 orders and handles circular dependencies appropriately.
 """
 
+import logging
 import os
-from openai import AsyncOpenAI
+from openai import (
+    APIConnectionError,
+    APITimeoutError,
+    AsyncOpenAI,
+    InternalServerError,
+    RateLimitError,
+)
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -17,6 +24,34 @@ from database.models import (
     DefinitionModel,
     FileModel,
 )
+
+logger = logging.getLogger(__name__)
+
+# Transient OpenAI failures worth retrying: network blips, timeouts, rate
+# limits, and upstream 5xx. Everything else (e.g. ValueError, auth/4xx) is a
+# programming or configuration error that retrying cannot fix.
+_TRANSIENT_OPENAI_ERRORS: tuple[type[Exception], ...] = (
+    APIConnectionError,
+    APITimeoutError,
+    RateLimitError,
+    InternalServerError,
+)
+
+
+def _language_display_name(language: str | None) -> str:
+    """Human-readable language name for prompt copy (e.g. "Python")."""
+    if not language:
+        return "source"
+    return {
+        "typescript": "TypeScript",
+        "javascript": "JavaScript",
+        "python": "Python",
+    }.get(language.lower(), language)
+
+
+def _language_fence(language: str | None) -> str:
+    """Markdown code-fence tag for the given language (e.g. "python")."""
+    return language.lower() if language else ""
 
 # OpenAI client initialization
 _openai_client: AsyncOpenAI | None = None
@@ -117,20 +152,68 @@ def _calculate_definition_input_tokens(
 file_summary_cache: dict[int, str] = {}
 definition_summary_cache: dict[int, str] = {}
 
-# Global token counters
+# Global token counters, populated from each API response's usage block.
 function_input_tokens: int = 0
 function_output_tokens: int = 0
 file_input_tokens: int = 0
 file_output_tokens: int = 0
+# Separate counts so file vs definition totals don't share one number.
+file_summaries_generated: int = 0
+definition_summaries_generated: int = 0
+# Total summaries generated this run (files + definitions); kept for the
+# batch pacing logic in parallel_summaries.py.
 summaries_generated: int = 0
 
 
-def parse_llm_response(response: str) -> tuple[str, str]:
-    """Parse the LLM response to extract the short and full summaries."""
+def _record_usage(usage: object, entity_type: str) -> None:
+    """Add an API response's token usage to the per-entity global counters.
 
-    # short summary is between the <gist> </gist> tags
-    short_summary = response.split("<gist>")[1].split("</gist>")[0]
-    full_summary = response.split("</gist>")[1]
+    Args:
+        usage: The ``response.usage`` object (or None if the provider omitted
+            it); read defensively so a missing/odd shape never aborts a run.
+        entity_type: ``"file"`` or ``"definition"``.
+    """
+    global file_input_tokens, file_output_tokens
+    global function_input_tokens, function_output_tokens
+
+    prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+    completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+
+    if entity_type == "file":
+        file_input_tokens += prompt_tokens
+        file_output_tokens += completion_tokens
+    else:
+        function_input_tokens += prompt_tokens
+        function_output_tokens += completion_tokens
+
+
+def parse_llm_response(response: str) -> tuple[str, str]:
+    """Parse the LLM response into (short summary, full summary).
+
+    The model is asked to wrap a one-line gist in ``<gist>...</gist>`` tags,
+    but a single malformed response must not crash the whole summary phase
+    (one exception here aborts every summary via the level-wide aggregation in
+    ``parallel_summaries.process_level``). Degrade gracefully: when the tags
+    are missing or unbalanced, return an empty gist and keep the raw response
+    as the full summary so the content is preserved rather than lost.
+    """
+    open_tag = "<gist>"
+    close_tag = "</gist>"
+
+    open_idx = response.find(open_tag)
+    if open_idx == -1:
+        # No gist tag at all: nothing to isolate, keep the whole response.
+        return "", response
+
+    close_idx = response.find(close_tag, open_idx + len(open_tag))
+    if close_idx == -1:
+        # Opening tag without a matching close: gist content is ambiguous, so
+        # don't guess a boundary; preserve the response as the full summary.
+        logger.warning("LLM response had an unclosed <gist> tag; using fallback")
+        return "", response
+
+    short_summary = response[open_idx + len(open_tag) : close_idx]
+    full_summary = response[close_idx + len(close_tag) :]
 
     return short_summary, full_summary
 
@@ -140,6 +223,7 @@ def clear_summary_caches() -> None:
     global file_summary_cache, definition_summary_cache
     global function_input_tokens, function_output_tokens
     global file_input_tokens, file_output_tokens
+    global file_summaries_generated, definition_summaries_generated
     global summaries_generated
 
     file_summary_cache.clear()
@@ -150,6 +234,8 @@ def clear_summary_caches() -> None:
     function_output_tokens = 0
     file_input_tokens = 0
     file_output_tokens = 0
+    file_summaries_generated = 0
+    definition_summaries_generated = 0
     summaries_generated = 0
 
 
@@ -212,13 +298,16 @@ def get_file_prompt(file: FileModel) -> str:
         ]
     )
 
+    fence = _language_fence(file.language)
+
     FILE_PROMPT = f"""
         # CONTEXT (verbatim; do NOT alter)
         FILE_ID: {file.id}
         FILE_PATH: {file.file_path}
+        LANGUAGE: {_language_display_name(file.language)}
 
         ## Raw Source
-        ```typescript
+        ```{fence}
         {file.file_content or "<no content>"}
         ```
 
@@ -281,16 +370,19 @@ def get_definition_prompt(definition: DefinitionModel) -> str:
     except Exception:
         siblings_catalog = ""
 
+    fence = _language_fence(definition.file.language)
+
     DEFINITION_PROMPT = f"""
         # CONTEXT (verbatim; do NOT alter)
         FILE_ID: {definition.file.id}
         FILE_PATH: {definition.file.file_path}
+        LANGUAGE: {_language_display_name(definition.file.language)}
         DEFINITION_ID: {definition.id}
         DEFINITION_NAME: {definition.name}
         DEFINITION_TYPE: {definition.definition_type}
 
         ## Raw Source
-        ```typescript
+        ```{fence}
         {definition.docstring or ""}
         {definition.source_code}
         ```
@@ -321,7 +413,7 @@ def get_definition_prompt(definition: DefinitionModel) -> str:
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=4, max=120),
-    retry=retry_if_exception_type((Exception,)),
+    retry=retry_if_exception_type(_TRANSIENT_OPENAI_ERRORS),
 )
 async def generate_file_summary_with_llm(file: FileModel) -> tuple[str, str]:
     """Generate an AI summary for a file using OpenAI's GPT model.
@@ -334,15 +426,16 @@ async def generate_file_summary_with_llm(file: FileModel) -> tuple[str, str]:
     """
     try:
         client = get_openai_client()
+        language = _language_display_name(file.language)
 
         response = await client.chat.completions.create(
             model=os.getenv("SUMMARIES_MODEL") or "google/gemini-2.5-flash",
             messages=[
                 {
                     "role": "system",
-                    "content": """
+                    "content": f"""
         # ROLE
-        You are an expert technical writer with deep TypeScript knowledge who can explain code clearly to **beginners** while preserving details senior engineers care about.
+        You are an expert technical writer with deep {language} knowledge who can explain code clearly to **beginners** while preserving details senior engineers care about.
 
         # TASKS
         1. **High‑level purpose (1-2 sentences).** What problem does this file solve?
@@ -409,8 +502,10 @@ async def generate_file_summary_with_llm(file: FileModel) -> tuple[str, str]:
             },
         )
 
-        global summaries_generated
+        global summaries_generated, file_summaries_generated
         summaries_generated += 1
+        file_summaries_generated += 1
+        _record_usage(getattr(response, "usage", None), "file")
 
         content = response.choices[0].message.content
         if content:
@@ -419,20 +514,15 @@ async def generate_file_summary_with_llm(file: FileModel) -> tuple[str, str]:
         else:
             return "", ""
 
-        # return (
-        #     f"AI summary for file '{file.file_path}'",
-        #     f"AI summary for file '{file.file_path}'",
-        # )
-
-    except Exception as e:
-        print(f"  ❌ OpenAI API error for file '{file.file_path}': {e}")
+    except Exception:
+        logger.exception("OpenAI API error for file '%s'", file.file_path)
         raise
 
 
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=4, max=120),
-    retry=retry_if_exception_type((Exception,)),
+    retry=retry_if_exception_type(_TRANSIENT_OPENAI_ERRORS),
 )
 async def generate_definition_summary_with_llm(
     definition: DefinitionModel,
@@ -447,6 +537,7 @@ async def generate_definition_summary_with_llm(
     """
     try:
         client = get_openai_client()
+        language = _language_display_name(definition.file.language)
 
         if definition.definition_type == "function":
             property_details = """
@@ -469,7 +560,7 @@ async def generate_definition_summary_with_llm(
                     "role": "system",
                     "content": f"""
         # ROLE
-        You are an experienced TypeScript engineer and technical writer.
+        You are an experienced {language} engineer and technical writer.
         You must produce a **beginner‑friendly yet detail‑rich summary** of a single definition so junior developers can grasp it quickly, while senior devs still find the nuances they need.
 
         # TASKS
@@ -539,24 +630,21 @@ async def generate_definition_summary_with_llm(
         )
 
         content = response.choices[0].message.content
-        global summaries_generated
+        global summaries_generated, definition_summaries_generated
         summaries_generated += 1
+        definition_summaries_generated += 1
+        _record_usage(getattr(response, "usage", None), "definition")
         if content:
             short_summary, full_summary = parse_llm_response(content)
             return short_summary, full_summary
         else:
             return "", ""
 
-        # print(f"definition summary system prompt:\n\n {get_definition_prompt(definition)}")
-
-        # return (
-        #     f"[AI_SUCCESS] Summary for definition '{definition.name}'",
-        #     "[AI_SUCCESS] Summary for definition '{definition.name}'",
-        # )
-
-    except Exception as e:
-        print(
-            f"  ❌ OpenAI API error for {definition.definition_type} '{definition.name}': {e}"
+    except Exception:
+        logger.exception(
+            "OpenAI API error for %s '%s'",
+            definition.definition_type,
+            definition.name,
         )
         raise
 
@@ -578,18 +666,13 @@ def _generate_placeholder_summary(content: str, entity_type: str, name: str) -> 
 
 
 def get_token_summary() -> dict[str, int]:
-    """Get summary of total token usage.
+    """Get summary of total token usage from the API responses this run.
 
     Returns:
-        Dictionary with token usage statistics
+        Dictionary with token usage statistics. Token totals come from each
+        response's ``usage`` block; averages divide by the matching per-entity
+        count so file and definition figures stay independent.
     """
-    global \
-        file_input_tokens, \
-        file_output_tokens, \
-        function_input_tokens, \
-        function_output_tokens, \
-        summaries_generated
-
     return {
         "total_file_input_tokens": file_input_tokens,
         "total_file_output_tokens": file_output_tokens,
@@ -597,13 +680,13 @@ def get_token_summary() -> dict[str, int]:
         "total_function_input_tokens": function_input_tokens,
         "total_function_output_tokens": function_output_tokens,
         "total_function_tokens": function_input_tokens + function_output_tokens,
-        "file_summaries_generated": summaries_generated,
-        "definition_summaries_generated": summaries_generated,
-        "average_input_tokens_per_file": file_input_tokens // summaries_generated
-        if summaries_generated > 0
+        "file_summaries_generated": file_summaries_generated,
+        "definition_summaries_generated": definition_summaries_generated,
+        "average_input_tokens_per_file": file_input_tokens // file_summaries_generated
+        if file_summaries_generated > 0
         else 0,
         "average_input_tokens_per_definition": function_input_tokens
-        // summaries_generated
-        if summaries_generated > 0
+        // definition_summaries_generated
+        if definition_summaries_generated > 0
         else 0,
     }

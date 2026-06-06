@@ -9,7 +9,7 @@ import {
 import { handleChatMessage } from "@/lib/services/chatHandler";
 import { conversations } from "@sita/shared";
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { on } from "events";
 import z from "zod";
 import { publicProcedure, router } from "../init";
@@ -18,20 +18,13 @@ export const chatRouter = router({
   deleteConversation: publicProcedure
     .input(
       z.object({
-        conversationId: z.string().optional(),
+        conversationId: z.string().min(1),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.conversationId) {
-        await ctx.supabaseDb
-          .delete(conversations)
-          .where(eq(conversations.id, input.conversationId));
-      } else {
-        /**
-         * @todo add conversation-specific management, now we just delete all
-         */
-        await ctx.supabaseDb.delete(conversations);
-      }
+      await ctx.supabaseDb
+        .delete(conversations)
+        .where(eq(conversations.id, input.conversationId));
     }),
 
   sendMessage: publicProcedure

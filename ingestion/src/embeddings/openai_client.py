@@ -2,7 +2,12 @@
 
 import os
 import logging
-from openai import OpenAI
+from openai import (
+    OpenAI,
+    APIConnectionError,
+    InternalServerError,
+    RateLimitError,
+)
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -11,6 +16,16 @@ from tenacity import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Errors that are worth retrying: network/connection failures (includes
+# APITimeoutError), rate limits, and transient 5xx server errors. Non-transient
+# failures (authentication, bad request, validation) are not retried — retrying
+# them only burns the backoff budget before failing identically.
+TRANSIENT_EMBEDDING_ERRORS: tuple[type[Exception], ...] = (
+    APIConnectionError,
+    RateLimitError,
+    InternalServerError,
+)
 
 class EmbeddingsClient:
     """Client for generating embeddings."""
@@ -47,7 +62,7 @@ class EmbeddingsClient:
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=120),
-        retry=retry_if_exception_type((Exception,)),
+        retry=retry_if_exception_type(TRANSIENT_EMBEDDING_ERRORS),
     )
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for a list of texts.

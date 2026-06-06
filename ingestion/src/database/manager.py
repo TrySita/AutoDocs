@@ -89,7 +89,7 @@ def has_session_context() -> bool:
 
 
 class DatabaseManager:
-    """Manages SQLite/Turso database connections and schema."""
+    """Manages SQLite database connections and schema."""
 
     def __init__(
         self,
@@ -100,15 +100,9 @@ class DatabaseManager:
         """Initialize database manager.
 
         Args:
-            db_path: Path to SQLite database file or ":memory:" for in-memory (ignored if using embedded replica)
+            db_path: Path to SQLite database file or ":memory:" for in-memory
             echo: Whether to echo SQL statements for debugging
             expire_on_commit: Whether to expire objects on commit
-            turso_url: Turso database URL (if None, will check TURSO_DATABASE_URL env var)
-            turso_auth_token: Turso auth token (if None, will check TURSO_AUTH_TOKEN env var)
-            turso_embedded_path: Path for embedded replica database file
-            turso_sync_url: Remote Turso database URL to sync with for embedded replicas
-            turso_sync_interval: Automatic sync interval in seconds
-            turso_encryption_key: Encryption key for embedded replica (optional)
         """
         self.db_path = db_path
         self.echo = echo

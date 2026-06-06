@@ -39,7 +39,7 @@ from tenacity import (
 from database.manager import DatabaseManager
 from database.models import FileModel, DefinitionModel, EmbeddingModel
 from .models import EmbeddingMetadata
-from .openai_client import EmbeddingsClient
+from .openai_client import EmbeddingsClient, TRANSIENT_EMBEDDING_ERRORS
 
 logger = logging.getLogger(__name__)
 
@@ -152,10 +152,10 @@ class EmbeddingsGenerator:
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=120),
-        retry=retry_if_exception_type((Exception,)),
+        retry=retry_if_exception_type(TRANSIENT_EMBEDDING_ERRORS),
     )
     async def _embed_texts_async(self, texts: list[str]) -> list[list[float]]:
-        """Async wrapper for gemini embeddings with retry logic."""
+        """Async wrapper for embedding generation with retry on transient errors."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.embedder.embed, texts)
 
@@ -173,10 +173,15 @@ class EmbeddingsGenerator:
 
         packed_vectors: list[bytes] = [array("f", vec).tobytes() for vec in vectors]
 
+        # Map each entity key to its packed vector so the RETURNING rows can be
+        # joined back by key rather than by position (see mirror step below).
+        packed_by_key: dict[tuple[Any, Any], bytes] = {}
+
         # Prepare rows for SQL upsert
         to_upsert: list[dict[str, Any]] = []
         for r, packed in zip(rows, packed_vectors):
             m = r["meta"]
+            packed_by_key[(m.get("entity_type"), m.get("entity_id"))] = packed
             to_upsert.append(
                 {
                     "entity_type": m.get("entity_type"),
@@ -221,12 +226,25 @@ class EmbeddingsGenerator:
                 result = session.execute(stmt)
                 returned = result.fetchall()
 
-                # Mirror into sqlite-vec virtual table (rowid=id)
+                # Mirror into sqlite-vec virtual table (rowid=id).
+                # RETURNING order is not guaranteed to match the input order, so
+                # join each returned (id, entity_type, entity_id) row back to its
+                # packed vector by entity key instead of by position.
                 if returned:
-                    # Build mapping back to packed vectors using position
                     params = []
-                    for row, packed in zip(returned, packed_vectors):
-                        params.append({"id": row[0], "embedding": packed})
+                    for row in returned:
+                        row_id, entity_type, entity_id = row[0], row[1], row[2]
+                        packed = packed_by_key.get((entity_type, entity_id))
+                        if packed is None:
+                            logger.error(
+                                "Returned embedding row (%s, %s) has no matching "
+                                "input vector; skipping vec mirror for id=%s",
+                                entity_type,
+                                entity_id,
+                                row_id,
+                            )
+                            continue
+                        params.append({"id": row_id, "embedding": packed})
                     _ = session.execute(
                         text(
                             "INSERT OR REPLACE INTO embeddings_vec(rowid, embedding) VALUES (:id, :embedding)"

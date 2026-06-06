@@ -1,7 +1,6 @@
 from .models import (
     DefinitionModel,
     FileModel,
-    ImportModel,
     ReferenceModel,
 )
 
@@ -17,7 +16,6 @@ __all__ = [
     "DefinitionModel",
     "FileModel",
     "ReferenceModel",
-    "ImportModel",
     "DatabaseManager",
     "session_scope",
     "get_current_session",

@@ -1,13 +1,13 @@
 """
 Data models for AST parsing, migrated from TypeScript interfaces.
-These models use SQLAlchemy for database persistence while maintaining
-the same structure as the original TypeScript types.
+These are plain in-memory containers for parse results; database persistence
+is handled separately by the SQLAlchemy models in ``database.models``.
 """
 
 from typing import Any
-from datetime import datetime
+from datetime import datetime, timezone
 
-from database.models import DefinitionModel, ImportModel
+from database.models import DefinitionModel
 
 class FileParseResult:
     """Data class equivalent to TypeScript FileParseResult"""
@@ -16,20 +16,14 @@ class FileParseResult:
         self,
         language: str,
         definitions: list[DefinitionModel] | None = None,
-        imports: list[ImportModel] | None = None,
-        exports: list[tuple[str, str]] | None = None,
     ):
         self.language = language
         self.definitions = definitions or []
-        self.imports = imports or []
-        self.exports: list[tuple[str, str]] = exports or []
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "language": self.language,
             "definitions": [str(d.__dict__) for d in self.definitions],
-            "imports": [str(i.__dict__) for i in self.imports],
-            "exports": self.exports,
         }
 
 
@@ -43,12 +37,8 @@ class UnpersistedParseResult:
     def __init__(
         self,
         definitions: list[DefinitionModel],
-        imports: list[ImportModel],
-        exports: list[tuple[str, str]],
     ):
         self.definitions = definitions
-        self.imports = imports
-        self.exports = exports
 
 
 class ParsedASTResult:
@@ -66,7 +56,7 @@ class ParsedASTResult:
     ):
         self.metadata = {
             "directoryPath": directory_path,
-            "generatedOn": datetime.utcnow().isoformat(),
+            "generatedOn": datetime.now(timezone.utc).isoformat(),
             "totalFiles": total_files,
             "parsedFiles": parsed_files,
             "unparsedFiles": unparsed_files,

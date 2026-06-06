@@ -31,7 +31,7 @@
 - Copy `.env.local.example` file and fill keys you have:
   - `cp .env.local.example .env.local`
   - DB URLs are prefilled for Docker Compose; adjust if needed.
-  - Ensure your `ANALYSIS_DB_URL` points to the right **absolute** path.
+  - Ensure your `ANALYSIS_DB_DIR` points to the right **absolute** path.
 - Install/build everything (optional, required for local dev):
   - `./tools/build_all.sh`
   - Python: syncs `ingestion` via `uv` (and exports `requirements_lock.txt`).

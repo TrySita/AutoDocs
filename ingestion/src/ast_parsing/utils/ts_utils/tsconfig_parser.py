@@ -6,9 +6,12 @@ path mapping configurations used for alias resolution.
 """
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def find_nearest_tsconfig(file_path: str) -> str | None:
@@ -52,7 +55,7 @@ def parse_tsconfig_json(tsconfig_path: str) -> dict[str, Any] | None:
             cleaned_content = _remove_json_comments(content)
             return json.loads(cleaned_content)
     except (json.JSONDecodeError, FileNotFoundError, OSError) as e:
-        print(f"Warning: Could not parse {tsconfig_path}: {e}")
+        logger.warning("Could not parse %s: %s", tsconfig_path, e)
         return None
 
 
@@ -126,6 +129,64 @@ def _remove_json_comments(content: str) -> str:
     return "".join(result)
 
 
+def _split_extends_package(extends: str) -> tuple[str, str]:
+    """Split a package ``extends`` target into its package name and subpath.
+
+    Mirrors Node's module resolution: a scoped package keeps its first two
+    segments (``@scope/name``) as the package name, an unscoped package keeps
+    only the first. Everything after that is the subpath inside the package.
+
+    Args:
+        extends: The raw ``extends`` value, e.g. ``@repo/typescript-config/base.json``
+
+    Returns:
+        Tuple of (package_name, subpath); subpath is empty if none was given.
+    """
+    parts = extends.split("/")
+    if extends.startswith("@"):
+        package_name = "/".join(parts[:2])
+        subpath = "/".join(parts[2:])
+    else:
+        package_name = parts[0]
+        subpath = "/".join(parts[1:])
+    return package_name, subpath
+
+
+def _resolve_package_extends(tsconfig_dir: Path, extends: str) -> Path | None:
+    """Resolve a package ``extends`` target through the cloned repo's node_modules.
+
+    Walks up from the consuming tsconfig's directory to the filesystem root,
+    looking for ``node_modules/<package>``, then resolves the requested file
+    inside it (defaulting to ``tsconfig.json`` when no subpath is given, the
+    way TypeScript does).
+
+    Args:
+        tsconfig_dir: Directory of the tsconfig.json that declares ``extends``
+        extends: The package ``extends`` value (npm package, possibly scoped)
+
+    Returns:
+        Path to the extended config file, or None if no matching package file
+        exists anywhere up the tree.
+    """
+    package_name, subpath = _split_extends_package(extends)
+    relative_file = subpath if subpath else "tsconfig.json"
+
+    current_dir = tsconfig_dir
+    while True:
+        package_dir = current_dir / "node_modules" / package_name
+        if package_dir.is_dir():
+            candidate = package_dir / relative_file
+            if not candidate.suffix:
+                candidate = candidate.with_suffix(".json")
+            if candidate.exists():
+                return candidate
+        if current_dir == current_dir.parent:  # Reached filesystem root
+            break
+        current_dir = current_dir.parent
+
+    return None
+
+
 def resolve_tsconfig_extends(
     tsconfig_path: str, tsconfig_data: dict[str, Any], visited: set[str] | None = None
 ) -> dict[str, Any]:
@@ -146,59 +207,62 @@ def resolve_tsconfig_extends(
     # Normalize path to prevent circular references
     normalized_path = os.path.normpath(os.path.abspath(tsconfig_path))
     if normalized_path in visited:
-        print(
-            f"Warning: Circular reference detected in tsconfig extends: {tsconfig_path}"
+        logger.warning(
+            "Circular reference detected in tsconfig extends: %s", tsconfig_path
         )
         return tsconfig_data
 
     visited.add(normalized_path)
 
     extends = tsconfig_data.get("extends")
-    if not extends:
+    if not isinstance(extends, str) or not extends:
         return tsconfig_data
 
-    # Resolve the extends path
     tsconfig_dir = Path(tsconfig_path).parent
 
-    # Handle different extend formats
-    if extends.startswith("@"):
-        # Package extend (e.g., "@repo/typescript-config/base.json")
-        # For now, we'll skip package extends and use the current config
-        print(
-            f"Warning: Package extends '{extends}' not fully supported, using current config"
-        )
+    # TypeScript treats an extends target as a relative file only when it starts
+    # with "./" or "../" (or is absolute); anything else is an npm package
+    # resolved through node_modules (the dominant Turborepo shared-config
+    # pattern, e.g. "@repo/typescript-config/base.json").
+    if extends.startswith("./") or extends.startswith("../") or os.path.isabs(extends):
+        extended_path = tsconfig_dir / extends
+        if not extended_path.suffix:
+            extended_path = extended_path.with_suffix(".json")
+    else:
+        resolved = _resolve_package_extends(tsconfig_dir, extends)
+        if resolved is None:
+            logger.warning(
+                "Could not resolve package extends '%s' from %s via node_modules",
+                extends,
+                tsconfig_path,
+            )
+            return tsconfig_data
+        extended_path = resolved
+
+    if not extended_path.exists():
         return tsconfig_data
 
-    # Relative path extend
-    extended_path = tsconfig_dir / extends
-    if not extended_path.suffix:
-        extended_path = extended_path.with_suffix(".json")
+    extended_data = parse_tsconfig_json(str(extended_path))
+    if not extended_data:
+        return tsconfig_data
 
-    if extended_path.exists():
-        extended_data = parse_tsconfig_json(str(extended_path))
-        if extended_data:
-            # Recursively resolve extends in the extended config
-            extended_data = resolve_tsconfig_extends(
-                str(extended_path), extended_data, visited
-            )
+    # Recursively resolve extends in the extended config
+    extended_data = resolve_tsconfig_extends(
+        str(extended_path), extended_data, visited
+    )
 
-            # Merge configurations (current config overrides extended)
-            merged = extended_data.copy()
-            merged.update(tsconfig_data)
+    # Merge configurations (current config overrides extended)
+    merged = extended_data.copy()
+    merged.update(tsconfig_data)
 
-            # Merge compilerOptions separately
-            if (
-                "compilerOptions" in extended_data
-                and "compilerOptions" in tsconfig_data
-            ):
-                merged["compilerOptions"] = {
-                    **extended_data["compilerOptions"],
-                    **tsconfig_data["compilerOptions"],
-                }
+    # Merge compilerOptions separately
+    if "compilerOptions" in extended_data and "compilerOptions" in tsconfig_data:
+        merged["compilerOptions"] = {
+            **extended_data["compilerOptions"],
+            **tsconfig_data["compilerOptions"],
+        }
 
-            return merged
-
-    return tsconfig_data
+    return merged
 
 
 def resolve_tsconfig_references(

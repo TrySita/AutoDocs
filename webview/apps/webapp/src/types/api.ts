@@ -4,386 +4,447 @@
  */
 
 export interface paths {
-  "/ingest/github": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/ingest/github": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest Github
+         * @description Enqueue an ingestion job for a public GitHub repository.
+         *
+         *     Returns a job_id that can be polled for status.
+         */
+        post: operations["ingest_github_ingest_github_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /**
-     * Ingest Github
-     * @description Enqueue an ingestion job for a public GitHub repository.
-     *
-     *     Returns a job_id that can be polled for status.
-     */
-    post: operations["ingest_github_ingest_github_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/ingest/jobs/{job_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/ingest/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ingest Job */
+        get: operations["get_ingest_job_ingest_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get Ingest Job */
-    get: operations["get_ingest_job_ingest_jobs__job_id__get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/search": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Semantic Search */
+        post: operations["semantic_search_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Semantic Search */
-    post: operations["semantic_search_search_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/schema": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Openapi Schema
+         * @description Get OpenAPI schema for TypeScript type generation.
+         */
+        get: operations["get_openapi_schema_schema_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /**
-     * Get Openapi Schema
-     * @description Get OpenAPI schema for TypeScript type generation.
-     */
-    get: operations["get_openapi_schema_schema_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
+    "/repo/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete Repo
+         * @description Delete the local database file and clone directory for a given repo slug.
+         *
+         *     Operates within the directory defined by `ANALYSIS_DB_DIR`.
+         */
+        post: operations["delete_repo_repo_delete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    /**
-     * EmbeddingMetadata
-     * @description Metadata for vector embeddings stored with each vector.
-     */
-    EmbeddingMetadata: {
-      /**
-       * Entity Type
-       * @enum {string}
-       */
-      entity_type: "file" | "definition";
-      /** Entity Id */
-      entity_id: number;
-      /** Entity Name */
-      entity_name: string;
-      /** File Path */
-      file_path: string;
-      /** Language */
-      language?: string | null;
-      /** Definition Type */
-      definition_type?: string | null;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at?: string;
+    schemas: {
+        /**
+         * DeleteRepoRequest
+         * @description Request payload to delete local data for a repo slug.
+         */
+        DeleteRepoRequest: {
+            /** Repo Slug */
+            repo_slug: string;
+        };
+        /**
+         * DeleteRepoResponse
+         * @description Result of delete operation for a repo slug.
+         */
+        DeleteRepoResponse: {
+            /** Repo Slug */
+            repo_slug: string;
+            /** Db Deleted */
+            db_deleted: boolean;
+            /** Clone Deleted */
+            clone_deleted: boolean;
+            /** Message */
+            message?: string | null;
+        };
+        /**
+         * EmbeddingMetadata
+         * @description Metadata for vector embeddings stored with each vector.
+         */
+        EmbeddingMetadata: {
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "file" | "definition";
+            /** Entity Id */
+            entity_id: number;
+            /** Entity Name */
+            entity_name: string;
+            /** File Path */
+            file_path: string;
+            /** Language */
+            language?: string | null;
+            /** Definition Type */
+            definition_type?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+        };
+        /** EnqueueResponse */
+        EnqueueResponse: {
+            /** Job Id */
+            job_id: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * IngestRequest
+         * @description Request payload for POST /ingest/github.
+         *
+         *     - github_url: Public GitHub repo URL (https)
+         *     - repo_slug: slug used to name resources
+         *     - force_full: if true, run full ingestion even if DB exists
+         *
+         *     Unknown keys (e.g. a legacy ``branch`` or ``db_path``) are ignored: branch
+         *     selection is not implemented, so accepting and silently dropping the field
+         *     avoids breaking clients that still send it.
+         */
+        IngestRequest: {
+            /** Github Url */
+            github_url: string;
+            /** Repo Slug */
+            repo_slug: string;
+            /**
+             * Force Full
+             * @default false
+             */
+            force_full: boolean;
+        };
+        /**
+         * JobProgress
+         * @enum {string}
+         */
+        JobProgress: "queued" | "starting" | "cloning_repo" | "parse" | "summaries" | "embeddings" | "finalize" | "completed" | "failed";
+        /**
+         * JobStatus
+         * @enum {string}
+         */
+        JobStatus: "queued" | "running" | "succeeded" | "failed";
+        /** JobStatusResponse */
+        JobStatusResponse: {
+            /** Job Id */
+            job_id: string;
+            status: components["schemas"]["JobStatus"];
+            progress: components["schemas"]["JobProgress"];
+            /** Mode */
+            mode?: string | null;
+            /** Commit */
+            commit?: string | null;
+            /** Counters */
+            counters?: {
+                [key: string]: number;
+            } | null;
+            /** Warnings */
+            warnings?: string[] | null;
+            /** Error */
+            error?: string | null;
+            /** Created At */
+            created_at?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+        };
+        /**
+         * SemanticSearchRequest
+         * @description Request payload for semantic/FTS search.
+         */
+        SemanticSearchRequest: {
+            /** Repo Slug */
+            repo_slug: string;
+            /** Query */
+            query: string;
+            /**
+             * Mode
+             * @default hybrid
+             * @enum {string}
+             */
+            mode: "semantic" | "symbol" | "path" | "hybrid";
+            /**
+             * Top K
+             * @default 10
+             */
+            top_k: number;
+            /** Entity Types */
+            entity_types?: ("file" | "definition")[] | null;
+        };
+        /**
+         * SemanticSearchResponse
+         * @description Response model for semantic search results.
+         */
+        SemanticSearchResponse: {
+            /** Query */
+            query: string;
+            /** Total Results */
+            total_results: number;
+            /** Results */
+            results: components["schemas"]["SemanticSearchResult"][];
+            /** Max Similarity */
+            max_similarity: number;
+            /** Min Similarity */
+            min_similarity: number;
+        };
+        /**
+         * SemanticSearchResult
+         * @description Individual search result with similarity score.
+         */
+        SemanticSearchResult: {
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "file" | "definition";
+            /** Entity Id */
+            entity_id: number;
+            /** Similarity Score */
+            similarity_score: number;
+            /** Summary Text */
+            summary_text: string;
+            metadata: components["schemas"]["EmbeddingMetadata"];
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
     };
-    /** EnqueueResponse */
-    EnqueueResponse: {
-      /** Job Id */
-      job_id: string;
-      /** @default queued */
-      status: components["schemas"]["JobStatus"];
-    };
-    /** HTTPValidationError */
-    HTTPValidationError: {
-      /** Detail */
-      detail?: components["schemas"]["ValidationError"][];
-    };
-    /**
-     * IngestRequest
-     * @description Request payload for POST /ingest/github.
-     *
-     *     - github_url: Public GitHub repo URL (https)
-     *     - repo_slug: slug used to name resources
-     *     - branch: optional branch name (default is repo default)
-     *     - force_full: if true, run full ingestion even if DB exists
-     *     - turso_db_name: optional override for DB name (defaults from slug)
-     *     - index: deprecated; vector search uses local sqlite-vec
-     *     - sync_interval: embedded replica periodic sync interval (seconds)
-     *     - encryption_key: optional at-rest encryption key for embedded replica
-     */
-    IngestRequest: {
-      /** Github Url */
-      github_url: string;
-      /** Repo Slug */
-      repo_slug: string;
-      /** Db Path */
-      db_path: string;
-      /** Branch */
-      branch?: string | null;
-      /**
-       * Force Full
-       * @default false
-       */
-      force_full: boolean;
-    };
-    /**
-     * JobProgress
-     * @enum {string}
-     */
-    JobProgress:
-      | "queued"
-      | "starting"
-      | "cloning_repo"
-      | "parse"
-      | "summaries"
-      | "embeddings"
-      | "finalize"
-      | "completed"
-      | "failed";
-    /**
-     * JobStatus
-     * @enum {string}
-     */
-    JobStatus: "queued" | "running" | "succeeded" | "failed";
-    /** JobStatusResponse */
-    JobStatusResponse: {
-      /** Job Id */
-      job_id: string;
-      status: components["schemas"]["JobStatus"];
-      progress: components["schemas"]["JobProgress"];
-      /** Mode */
-      mode?: string | null;
-      /** Commit */
-      commit?: string | null;
-      /** Counters */
-      counters?: {
-        [key: string]: number;
-      } | null;
-      /** Warnings */
-      warnings?: string[] | null;
-      /** Error */
-      error?: string | null;
-      /** Created At */
-      created_at?: string | null;
-      /** Started At */
-      started_at?: string | null;
-      /** Finished At */
-      finished_at?: string | null;
-    };
-    /**
-     * SemanticSearchRequest
-     * @description Request payload for semantic/FTS search.
-     */
-    SemanticSearchRequest: {
-      /** Repo Slug */
-      repo_slug: string;
-      /** Query */
-      query: string;
-      /**
-       * Mode
-       * @default hybrid
-       * @enum {string}
-       */
-      mode: "semantic" | "symbol" | "path" | "hybrid";
-      /**
-       * Top K
-       * @default 10
-       */
-      top_k: number;
-      /** Entity Types */
-      entity_types?: ("file" | "definition")[] | null;
-    };
-    /**
-     * SemanticSearchResponse
-     * @description Response model for semantic search results.
-     */
-    SemanticSearchResponse: {
-      /** Query */
-      query: string;
-      /** Total Results */
-      total_results: number;
-      /** Results */
-      results: components["schemas"]["SemanticSearchResult"][];
-      /** Max Similarity */
-      max_similarity: number;
-      /** Min Similarity */
-      min_similarity: number;
-    };
-    /**
-     * SemanticSearchResult
-     * @description Individual search result with similarity score.
-     */
-    SemanticSearchResult: {
-      /**
-       * Entity Type
-       * @enum {string}
-       */
-      entity_type: "file" | "definition";
-      /** Entity Id */
-      entity_id: number;
-      /** Similarity Score */
-      similarity_score: number;
-      /** Summary Text */
-      summary_text: string;
-      metadata: components["schemas"]["EmbeddingMetadata"];
-    };
-    /** ValidationError */
-    ValidationError: {
-      /** Location */
-      loc: (string | number)[];
-      /** Message */
-      msg: string;
-      /** Error Type */
-      type: string;
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  ingest_github_ingest_github_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    ingest_github_ingest_github_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnqueueResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["IngestRequest"];
-      };
+    get_ingest_job_ingest_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    semantic_search_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["EnqueueResponse"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SemanticSearchRequest"];
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SemanticSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
     };
-  };
-  get_ingest_job_ingest_jobs__job_id__get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        job_id: string;
-      };
-      cookie?: never;
+    get_openapi_schema_schema_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    delete_repo_repo_delete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["JobStatusResponse"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteRepoRequest"];
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteRepoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
     };
-  };
-  semantic_search_search_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SemanticSearchRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SemanticSearchResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_openapi_schema_schema_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-    };
-  };
 }

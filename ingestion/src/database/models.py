@@ -123,13 +123,6 @@ class FileModel(Base):
         foreign_keys="[DefinitionModel.file_id]",
         init=False,
     )
-    imports: Mapped[list["ImportModel"]] = relationship(
-        "ImportModel",
-        back_populates="file",
-        cascade="all, delete-orphan",
-        default_factory=list,
-        init=False,
-    )
 
     file_dependencies: Mapped[list["FileDependencyModel"]] = relationship(
         "FileDependencyModel",
@@ -195,14 +188,6 @@ class PackageModel(Base):
     files: Mapped[list["FileModel"]] = relationship(
         "FileModel",
         foreign_keys="[FileModel.package_id]",
-        cascade="all, delete-orphan",
-        default_factory=list,
-        init=False,
-    )
-    imports: Mapped[list["ImportModel"]] = relationship(
-        "ImportModel",
-        back_populates="target_package",
-        foreign_keys="[ImportModel.target_package_id]",
         cascade="all, delete-orphan",
         default_factory=list,
         init=False,
@@ -300,7 +285,7 @@ class DefinitionModel(Base):
 
 
 class ReferenceModel(Base):
-    """SQLAlchemy model for function_calls table."""
+    """SQLAlchemy model for the references table."""
 
     __tablename__ = "references"  # pyright: ignore[reportUnannotatedClassAttribute]
 
@@ -344,67 +329,6 @@ class ReferenceModel(Base):
         Index("idx_references_source", "source_definition_id"),
         Index("idx_references_target", "target_definition_id"),
         UniqueConstraint("source_definition_id", "target_definition_id"),
-    )
-
-
-### no longer used
-class ImportModel(Base):
-    """SQLAlchemy model for imports table."""
-
-    __tablename__ = "imports"  # pyright: ignore[reportUnannotatedClassAttribute]
-
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True, init=False
-    )
-    file_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("files.id", ondelete="CASCADE"), init=False
-    )
-    specifier: Mapped[str] = mapped_column(String, nullable=False)
-    module: Mapped[str] = mapped_column(String, nullable=False)
-    import_type: Mapped[str] = mapped_column(
-        String,
-        CheckConstraint(
-            "import_type IN ('default', 'named', 'namespace', 'side-effect', 're-export')"
-        ),
-        nullable=False,
-    )
-    resolved_file_path: Mapped[str | None] = mapped_column(String, nullable=True)
-    alias: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
-    is_external: Mapped[bool] = mapped_column(Boolean, default=False)
-
-    # New fields for package tracking
-    target_package_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("packages.id", ondelete="SET NULL"),
-        nullable=True,
-        default=None,
-    )
-    resolution_type: Mapped[str | None] = mapped_column(
-        String,
-        CheckConstraint(
-            "resolution_type IN ('package', 'alias', 'relative', 'external', 'unknown')"
-        ),
-        nullable=True,
-        default=None,
-    )
-
-    # Relationships
-    file: Mapped["FileModel"] = relationship(
-        "FileModel", back_populates="imports", default=None
-    )
-    target_package: Mapped["PackageModel | None"] = relationship(
-        "PackageModel",
-        back_populates="imports",
-        default=None,
-        foreign_keys=[target_package_id],
-    )
-
-    # Indexes
-    __table_args__ = (  # pyright: ignore[reportAny, reportUnannotatedClassAttribute]
-        Index("idx_imports_file", "file_id"),
-        Index("idx_imports_module", "module"),
-        Index("idx_imports_target_package", "target_package_id"),
-        Index("idx_imports_resolution_type", "resolution_type"),
     )
 
 

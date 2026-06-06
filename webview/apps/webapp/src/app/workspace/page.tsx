@@ -258,10 +258,16 @@ function ProjectCard({
     data: job,
     percent,
     progressText,
+    jobLost,
   } = useIngestionStatus(project.latestJobId || undefined);
-  const status = (job?.status ?? project.latestJobStatus) as
-    | components["schemas"]["JobStatusResponse"]["status"]
-    | undefined;
+  // When the API no longer knows the job (e.g. lost to a restart), the persisted
+  // latestJobStatus is a stale "queued" that would pin the card as busy forever.
+  // Treat the lost job as an idle/openable state instead of falling back to it.
+  const status = jobLost
+    ? undefined
+    : ((job?.status ?? project.latestJobStatus) as
+        | components["schemas"]["JobStatusResponse"]["status"]
+        | undefined);
   const isBusy = isBusyStatus(status);
   const hasFailed = job?.status === "failed";
   const hasSucceeded = job?.status === "succeeded";

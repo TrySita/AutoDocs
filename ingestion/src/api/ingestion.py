@@ -11,16 +11,13 @@ Implements the full ingestion pipeline:
 
 from __future__ import annotations
 
-import asyncio
 from copy import copy
 import logging
-import os
 from dataclasses import dataclass
 from pathlib import Path
-import shutil
-from types import NoneType
 from typing import Final
 
+from api.config import load_config
 from api.job_manager import JobResult, update_progress
 from api.schemas import JobProgress
 from api.schemas import IngestRequest
@@ -29,7 +26,6 @@ from dag_builder.netx import DAGBuilder
 from database.manager import DatabaseManager, session_scope
 from database.types import ParseDelta
 from ast_parsing.hybrid_parser import HybridParser
-from ast_parsing.parser import get_parser
 from ai_analysis.parallel_summaries import ParallelSummaryExecutor
 from embeddings.openai_client import EmbeddingsClient
 from embeddings.generator import EmbeddingsGenerator
@@ -50,7 +46,6 @@ PHASES: Final[list[str]] = [
 @dataclass
 class IngestSettings:
     github_url: str
-    branch: str | None
     force_full: bool
     repo_slug: str
 
@@ -86,7 +81,7 @@ async def run_ingest_job(job_id: str, payload: IngestRequest) -> JobResult:
 
     The payload is the dict form of IngestRequest (validated by FastAPI).
     """
-    WORKDIR = Path(os.getenv("ANALYSIS_DB_DIR", "."))
+    WORKDIR = Path(load_config().analysis_db_dir)
 
     counters: dict[str, int] = {
         "files_processed": 0,
@@ -99,9 +94,7 @@ async def run_ingest_job(job_id: str, payload: IngestRequest) -> JobResult:
     warnings: list[str] = []
 
     settings = copy(payload)
-    logger.info(
-        f"[{job_id}] Parsed settings: force_full={settings.force_full}, branch={settings.branch}"
-    )
+    logger.info(f"[{job_id}] Parsed settings: force_full={settings.force_full}")
 
     repo: RepositoryModel | None = None
     repo_path = WORKDIR / "clones" / settings.repo_slug
@@ -146,15 +139,17 @@ async def run_ingest_job(job_id: str, payload: IngestRequest) -> JobResult:
             .first()
         )
 
-        _ = await parser.parse_repository(
+        parse_result = await parser.parse_repository(
             session=session,
             repo_path=str(repo_path),
             repository=repo,
             new_commit_hash=repo_info.commit_hash,
         )
 
-    # Extract delta from the underlying AST parser
-    delta: ParseDelta | None = get_parser(db_manager=local_db).current_delta  # type: ignore[arg-type]
+    # The delta is produced by the AST parser HybridParser builds internally and
+    # surfaced on the parse result, so the worker sees the actual changes rather
+    # than a separate, never-parsed module-global parser whose delta is always None.
+    delta: ParseDelta | None = parse_result.delta
     if delta:
         logger.info(
             f"[{job_id}] Parse delta: {len(delta.files_added)} files added, {len(delta.files_modified)} modified, {len(delta.definitions_added)} definitions added"
@@ -209,7 +204,10 @@ async def run_ingest_job(job_id: str, payload: IngestRequest) -> JobResult:
     # Phase: embeddings (local sqlite-vec)
     logger.info(f"[{job_id}] Starting embeddings phase")
     update_progress(job_id, JobProgress.embeddings)
-    embeddings_api_key = os.getenv("EMBEDDINGS_API_KEY")
+    # Validate the embeddings key at worker start rather than passing an
+    # unchecked (possibly None) value into EmbeddingsClient. load_config()
+    # raises ConfigError if the key is missing, so the job fails loudly here.
+    embeddings_api_key = load_config().embeddings_api_key
 
     embedder = EmbeddingsClient(api_key=embeddings_api_key)
     generator = EmbeddingsGenerator(
@@ -277,7 +275,7 @@ async def run_ingest_job(job_id: str, payload: IngestRequest) -> JobResult:
         warnings=warnings,
     )
 
-    # truncate database
+    # dispose of the database engine and its connections
     local_db.close()
 
     logger.info(

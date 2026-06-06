@@ -84,7 +84,5 @@ export type OpenAIResponseEvent =
       error?: string;
     }
   | { type: 'turn.completed'; ms: number; toolCallsUsed: number }
-  | { type: 'compacting'; compacting: boolean }
-  | { type: 'compactionComplete'; compactionComplete: boolean }
   | { type: 'error'; message: string }
   | { type: 'done'; done: boolean };

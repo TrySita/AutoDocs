@@ -40,13 +40,6 @@ async def comprehensive_parse_result(db_manager):
 
 
 @pytest_asyncio.fixture(scope="session")
-async def import_export_parse_result(db_manager):
-    """Parse the import-export test file once for all tests."""
-    test_file_path = Path(__file__).parent / "test_files" / "test-import-export.ts"
-    return await parse_file(test_file_path.as_posix(), db_manager=db_manager)
-
-
-@pytest_asyncio.fixture(scope="session")
 async def jsx_parse_result(db_manager):
     """Parse the JSX components test file once for all tests."""
     test_file_path = Path(__file__).parent / "test_files" / "test-jsx-components.tsx"

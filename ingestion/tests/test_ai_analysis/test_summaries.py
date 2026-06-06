@@ -1,6 +1,5 @@
 """Unit tests for AI analysis summary functions."""
 
-import pytest
 from ai_analysis.summaries import parse_llm_response
 
 
@@ -51,25 +50,31 @@ Full summary starts here"""
         assert full_summary == "\nFull summary starts here"
 
     def test_parse_no_gist_tags(self):
-        """Test parsing response without gist tags (should raise IndexError)."""
+        """Malformed response without gist tags degrades to the whole text."""
         response = "This is just a regular response without tags"
 
-        with pytest.raises(IndexError):
-            parse_llm_response(response)
+        short_summary, full_summary = parse_llm_response(response)
+
+        assert short_summary == ""
+        assert full_summary == response
 
     def test_parse_missing_closing_gist_tag(self):
-        """Test parsing response with missing closing gist tag."""
+        """Unclosed gist tag falls back to the raw response, never raising."""
         response = "<gist>Short summaryFull summary"
 
-        with pytest.raises(IndexError):
-            parse_llm_response(response)
+        short_summary, full_summary = parse_llm_response(response)
+
+        assert short_summary == ""
+        assert full_summary == response
 
     def test_parse_empty_response(self):
-        """Test parsing empty response string."""
+        """Empty response yields empty summaries instead of raising."""
         response = ""
 
-        with pytest.raises(IndexError):
-            parse_llm_response(response)
+        short_summary, full_summary = parse_llm_response(response)
+
+        assert short_summary == ""
+        assert full_summary == ""
 
     def test_parse_only_gist_no_content_after(self):
         """Test parsing response with only gist content and no content after."""

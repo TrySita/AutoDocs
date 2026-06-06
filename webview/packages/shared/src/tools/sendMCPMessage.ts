@@ -166,9 +166,24 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 
 const TOOLS = [BATCH_SEARCH_TOOL_SCHEMA];
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'fake-key',
-});
+// Lazily construct the OpenAI client. Validating OPENAI_API_KEY at module load
+// would crash any consumer of @sita/shared (the package re-exports this module
+// via `export *`) the moment it imports anything else, e.g. a tRPC route that
+// only needs SupabaseDb. We fail loudly with the same clear message, but only
+// when the chat/MCP agent actually needs the client.
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (openaiClient) {
+    return openaiClient;
+  }
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not set; the MCP chat agent cannot start.');
+  }
+  openaiClient = new OpenAI({ apiKey });
+  return openaiClient;
+}
 
 type LoopOpts = {
   instructions: string;
@@ -205,7 +220,7 @@ export async function runWithBudgets(opts: LoopOpts): Promise<string> {
     }
 
     // Start a streaming Responses request
-    const stream = await openai.responses.create({
+    const stream = await getOpenAIClient().responses.create({
       model: MODEL_CONFIG.model,
       instructions: opts.instructions,
       input: opts.messages,
@@ -249,7 +264,10 @@ export async function runWithBudgets(opts: LoopOpts): Promise<string> {
               type: 'function_call',
               call_id: call_id,
               name: name,
-              arguments: JSON.stringify(args),
+              // `args` is already the JSON-encoded arguments string from the
+              // function_call item; re-stringifying double-encodes it so the
+              // model sees escaped JSON on multi-turn tool use.
+              arguments: args,
             });
             pendingCalls.push({ name, arguments: args, call_id });
             send(event);

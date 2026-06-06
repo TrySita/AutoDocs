@@ -65,7 +65,8 @@ main() {
     echo "[ts] skipped (--skip-ts)"
   fi
 
-  echo "\nAll done."
+  echo ""
+  echo "All done."
 }
 
 main "$@"

@@ -1,7 +1,17 @@
 import { publicProjects, supabaseDb } from "@sita/shared";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import type { components } from "@/types/api";
 import { publicProcedure, router } from "../init";
+
+type IngestRequest = components["schemas"]["IngestRequest"];
+type EnqueueResponse = components["schemas"]["EnqueueResponse"];
+type JobStatus = components["schemas"]["JobStatus"];
+
+// A freshly enqueued job has not been polled yet; the API enqueues it in the
+// "queued" state (EnqueueResponse carries only the job_id), so record that as
+// the latest known status rather than leaving it undefined.
+const INITIAL_JOB_STATUS: JobStatus = "queued";
 
 export const projectRouter = router({
   getPublicProjects: publicProcedure
@@ -120,25 +130,27 @@ export const projectRouter = router({
           if (!baseUrl)
             throw new Error("INGESTION_API_URL not set");
 
+          const body: IngestRequest = {
+            github_url: input.repositoryUrl,
+            repo_slug: input.slug,
+            force_full: false,
+          };
           const res = await fetch(`${baseUrl}/ingest/github`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              github_url: input.repositoryUrl,
-              repo_slug: input.slug,
-              db_path: `${input.slug}.db`,
-              branch: null,
-              force_full: false,
-            }),
+            body: JSON.stringify(body),
           });
           if (!res.ok) {
             const text = await res.text();
             throw new Error(`Ingestion enqueue failed: ${res.status} ${text}`);
           }
-          const data = (await res.json()) as { job_id: string; status: string };
+          const data = (await res.json()) as EnqueueResponse;
           const [updated] = await supabaseDb
             .update(publicProjects)
-            .set({ latestJobId: data.job_id, latestJobStatus: data.status })
+            .set({
+              latestJobId: data.job_id,
+              latestJobStatus: INITIAL_JOB_STATUS,
+            })
             .where(eq(publicProjects.id, created.id))
             .returning();
           return updated;
@@ -157,28 +169,32 @@ export const projectRouter = router({
         where: eq(publicProjects.id, input.id),
       });
       if (!proj) throw new Error("Project not found");
+      if (!proj.repositoryUrl)
+        throw new Error("Project has no repository URL to re-ingest");
       const baseUrl = process.env.INGESTION_API_URL;
       if (!baseUrl) throw new Error("INGESTION_API_URL not set");
 
+      const body: IngestRequest = {
+        github_url: proj.repositoryUrl,
+        repo_slug: proj.slug,
+        force_full: false,
+      };
       const res = await fetch(`${baseUrl}/ingest/github`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          github_url: proj.repositoryUrl,
-          repo_slug: proj.slug,
-          db_path: `${proj.slug}.db`,
-          branch: null,
-          force_full: false,
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Ingestion enqueue failed: ${res.status} ${text}`);
       }
-      const data = (await res.json()) as { job_id: string; status: string };
+      const data = (await res.json()) as EnqueueResponse;
       const [updated] = await supabaseDb
         .update(publicProjects)
-        .set({ latestJobId: data.job_id, latestJobStatus: data.status })
+        .set({
+          latestJobId: data.job_id,
+          latestJobStatus: INITIAL_JOB_STATUS,
+        })
         .where(eq(publicProjects.id, input.id))
         .returning();
       return updated;

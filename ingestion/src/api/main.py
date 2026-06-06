@@ -12,8 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.schemas import (
     IngestRequest,
     EnqueueResponse,
-    JobProgress,
-    JobStatus,
     JobStatusResponse,
     SemanticSearchRequest,
     SemanticSearchResponse,
@@ -23,12 +21,12 @@ from api.schemas import (
 )
 from api.job_manager import submit_job, get_job
 from api.ingestion import run_ingest_job
+from api.config import load_config
 from database.manager import DatabaseManager
 from embeddings.models import EmbeddingMetadata
 from embeddings.search import SemanticSearchProcessor
 from embeddings.openai_client import EmbeddingsClient
-import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Load environment for local dev first from .env and .env.local.
 # Prefer .env.local values when both exist.
@@ -37,8 +35,6 @@ _ = load_dotenv(dotenv_path=".env.local", override=True)
 # Also try repository root fallbacks when running from ingestion/ working dir
 _ = load_dotenv(dotenv_path="../.env")
 _ = load_dotenv(dotenv_path="../.env.local", override=True)
-
-PATH_TO_DBS = os.getenv("ANALYSIS_DB_DIR", ".")
 
 # Configure logging
 logging.basicConfig(
@@ -49,16 +45,22 @@ logging.basicConfig(
     ],
 )
 
+# Validate all required configuration once, at import/startup time, so the app
+# fails loudly on misconfiguration instead of mid-request or mid-job.
+config = load_config()
+PATH_TO_DBS = config.analysis_db_dir
+
 app = FastAPI(
     title="Analysis Agent API",
     description="Ingestion API with background jobs for repo analysis",
     version="1.0.0",
 )
 
-# CORS middleware for frontend access
+# CORS middleware for frontend access. Origins come from validated config
+# (env-driven, never a credentialed wildcard).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=config.cors_allowed_origins,
     allow_credentials=True,
     allow_methods=[
         "GET",
@@ -84,20 +86,9 @@ async def ingest_github(payload: IngestRequest) -> EnqueueResponse:
 async def get_ingest_job(job_id: str) -> JobStatusResponse:
     rec = get_job(job_id)
     if not rec:
-        # if jobid not found, return "done" with no error
-        return JobStatusResponse(
-            job_id=job_id,
-            status=JobStatus.succeeded,
-            progress=JobProgress.completed,
-            mode=None,
-            commit=None,
-            counters=None,
-            warnings=None,
-            error=None,
-            created_at="",
-            started_at=None,
-            finished_at=None,
-        )
+        # Unknown job IDs (bogus or lost to a restart) must be a 404, not a
+        # fake "succeeded" that hides the fact that the job never ran.
+        raise HTTPException(status_code=404, detail="Job not found")
 
     result = rec.result
     return JobStatusResponse(
@@ -125,18 +116,11 @@ async def semantic_search(payload: SemanticSearchRequest) -> SemanticSearchRespo
     )
     db = DatabaseManager(db_path=db_path)
 
-    # Configure embedder if needed
+    # Configure embedder if needed. The embeddings key is validated at startup
+    # (see api.config), so it is guaranteed present here.
     embedder = None
     if payload.mode in ("semantic", "hybrid"):
-        api_key = os.getenv("EMBEDDINGS_API_KEY")
-        if not api_key:
-            if payload.mode == "semantic":
-                raise HTTPException(
-                    status_code=400,
-                    detail="EMBEDDINGS_API_KEY required for semantic mode",
-                )
-        else:
-            embedder = EmbeddingsClient(api_key=api_key)
+        embedder = EmbeddingsClient(api_key=config.embeddings_api_key)
 
     processor = SemanticSearchProcessor(db=db, embedder=embedder)
 
@@ -160,14 +144,18 @@ async def semantic_search(payload: SemanticSearchRequest) -> SemanticSearchRespo
     results: list[SemanticSearchResult] = []
     similarities: list[float] = []
 
-    def to_similarity(distance: float | None) -> float:
+    def to_similarity(distance: float | None) -> float | None:
+        # A missing distance means there is no comparable vector distance for
+        # this row (e.g. a hybrid result matched only by full-text search).
+        # Return None rather than a fabricated 0.0 that would understate a
+        # result that may in fact rank highly.
         if distance is None:
-            return 0.0
+            return None
         # Convert distance (lower is better) to similarity in [0,1]
         try:
             return 1.0 / (1.0 + float(distance))
         except Exception:
-            return 0.0
+            return None
 
     for r in rows:
         # Validate required identifiers
@@ -196,12 +184,13 @@ async def semantic_search(payload: SemanticSearchRequest) -> SemanticSearchRespo
             try:
                 created_at = datetime.fromisoformat(created_at)
             except Exception:
-                created_at = datetime.utcnow()
+                created_at = datetime.now(timezone.utc)
         elif created_at is None:
-            created_at = datetime.utcnow()
+            created_at = datetime.now(timezone.utc)
 
         similarity = to_similarity(r.get("distance"))
-        similarities.append(similarity)
+        if similarity is not None:
+            similarities.append(similarity)
 
         metadata = EmbeddingMetadata(
             entity_type=entity_type,

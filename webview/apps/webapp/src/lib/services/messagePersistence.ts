@@ -19,8 +19,6 @@ export interface MessageHistory {
   characterCount: number;
 }
 
-const MAX_CHARS_BEFORE_COMPACTION = 2000;
-
 // Ensure there is a stable anonymous user we can attach global conversations to
 async function getOrCreateGlobalAnonymousUser(supabaseDb: SupabaseDb) {
   const existing = await supabaseDb
@@ -119,45 +117,6 @@ export async function addMessage(
     content,
     characterCount: content.length,
   });
-}
-
-export function shouldTriggerCompaction(characterCount: number): boolean {
-  return characterCount >= MAX_CHARS_BEFORE_COMPACTION;
-}
-
-export async function updateConversationSummary(
-  supabaseDb: SupabaseDb,
-  conversationId: string,
-  summary: string,
-): Promise<void> {
-  // Get the current messages that will remain after compaction
-  const remainingMessages = await supabaseDb
-    .select({ content: messages.content })
-    .from(messages)
-    .where(eq(messages.conversationId, conversationId))
-    .orderBy(desc(messages.timestamp))
-    .limit(1);
-
-  const remainingChars = remainingMessages?.[0]?.content.length || 0;
-
-  await supabaseDb
-    .update(conversations)
-    .set({
-      summary,
-      characterCount: summary.length + remainingChars,
-    })
-    .where(eq(conversations.id, conversationId));
-}
-
-export async function clearMessagesAfterCompaction(
-  supabaseDb: SupabaseDb,
-  conversationId: string,
-): Promise<void> {
-  // Mark older messages as not included in future context
-  await supabaseDb
-    .update(messages)
-    .set({ includedInContext: false })
-    .where(eq(messages.conversationId, conversationId));
 }
 
 export async function getRecentMessagesForContext(

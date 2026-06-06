@@ -10,7 +10,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Bot, ExternalLink, Send, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CompactionIndicator } from "../chat/CompactionIndicator";
 import { MessageList } from "../chat/MessageList";
 
 interface ChatDrawerProps {
@@ -44,13 +43,8 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({ isOpen, onClose }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  const {
-    messages,
-    isLoading,
-    isCompacting,
-    handleSendMessage,
-    handleDeleteConversation,
-  } = useChat();
+  const { messages, isLoading, handleSendMessage, handleDeleteConversation } =
+    useChat();
 
   const { fileData: currentFile } = useSelectedFile();
 
@@ -134,7 +128,6 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({ isOpen, onClose }) => {
       {/* Messages */}
       <div className="flex-1 py-4 px-2 max-w-full overflow-y-auto">
         <MessageList endRef={messagesEndRef} messages={messages} />
-        <CompactionIndicator isCompacting={isCompacting} />
       </div>
 
       {/* Input */}

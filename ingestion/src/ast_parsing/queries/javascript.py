@@ -9,57 +9,84 @@ Patterns for:
 - class declarations
 - exported variable declarations with arrow functions or function expressions
 - plain variable declarations (const/let/var)
+
+Captures are typed (``@def_<kind>``/``@name_<kind>``) so the parser's
+kind-aware extraction loop in ``parser.py`` can resolve each match, mirroring
+the structure of ``typescript.py``. JavaScript has no interfaces, type
+aliases, enums, or modules, so only function/method/class/constant/variable
+kinds appear here.
 """
 
 DECLARATION_PATTERN_JS = """
 [
-  ;; 1. Variable declarator with function/arrow initializer → const name = () => {}, let name = function() {}
-  (variable_declarator
-    name: (identifier)        @name
-    value: [(arrow_function) (function_expression)])           @def
+  ;; ───── Functions (named) ────────────────────────────────────────────────
+  ;; function name() {…}
+  (function_declaration
+    name: (identifier) @name_function) @def_function @def
 
-  ;; 2. Assignment to identifier → name = function() {}, name = () => {}
+  ;; const/let/var name = () => {} | function () {}
+  (variable_declarator
+    name: (identifier) @name_function
+    value: [(arrow_function) (function_expression)]) @def_function @def
+
+  ;; name = function() {} | name = () => {}
   (expression_statement
     (assignment_expression
-      left:  (identifier) @name
-      right: [(function_expression) (arrow_function)]))        @def
+      left:  (identifier) @name_function
+      right: [(function_expression) (arrow_function)])) @def_function @def
 
-  ;; 3. Assignment to object property → obj.prop = function() {}, obj.prop = () => {}, obj.nested.prop = function() {}
+  ;; Anonymous arrow function (no name)
+  (arrow_function) @def_function @def
+
+  ;; ───── Methods (class/object-style) ─────────────────────────────────────
+  (method_definition              name: (property_identifier) @name_method) @def_method @def
+
+  ;; obj.prop = function() {} | obj.prop = () => {} | obj.nested.prop = …
   (expression_statement
     (assignment_expression
       left: (member_expression
-        property: (property_identifier) @name)
-      right: [(function_expression) (arrow_function)]))        @def
+              property: (property_identifier) @name_method)
+      right: [(function_expression) (arrow_function)])) @def_method @def
 
-  ;; 4. Arrow or async arrow → (x) => x ,  async (x) => {…}
-  (arrow_function)                                              @def
+  ;; ───── Classes ──────────────────────────────────────────────────────────
+  (class_declaration              name: (identifier)          @name_class) @def_class @def
 
-  ;; 5. Function declaration → function name() {…}
-  (function_declaration           name: (identifier)          @name) @def
-
-  ;; 6. Method definition in classes/objects
-  (method_definition              name: (property_identifier) @name) @def
-
-  ;; 7. Class declaration
-  (class_declaration              name: (identifier)          @name) @def
-
-  ;; 8. export const/let/var name = () => {} | function() {}
+  ;; ───── Exported function values ────────────────────────────────────────
   (export_statement
     (lexical_declaration
       (variable_declarator
-        name: (identifier)        @name
-        value: [(arrow_function) (function_expression)])))     @def
+        name: (identifier) @name_function
+        value: [(arrow_function) (function_expression)]))) @def_function @def
 
   (export_statement
     (variable_declaration
       (variable_declarator
-        name: (identifier)        @name
-        value: [(arrow_function) (function_expression)])))     @def
+        name: (identifier) @name_function
+        value: [(arrow_function) (function_expression)]))) @def_function @def
 
-  ;; 9. Plain variable declarations (no initializer required)
+  ;; ───── Constants / Variables (non-function values) ─────────────────────
+  ;; const NAME = <non-function>
   (lexical_declaration
+    "const"
     (variable_declarator
-      name: (identifier)        @name))                        @def
+      name: (identifier) @name_constant)) @def_constant @def
+
+  (export_statement
+    (lexical_declaration
+      "const"
+      (variable_declarator
+        name: (identifier) @name_constant))) @def_constant @def
+
+  ;; let NAME = <non-function>
+  (lexical_declaration
+    "let"
+    (variable_declarator
+      name: (identifier) @name_variable)) @def_variable @def
+
+  ;; var NAME = <non-function>
+  (variable_declaration
+    (variable_declarator
+      name: (identifier) @name_variable)) @def_variable @def
 ]
 """
 

@@ -85,7 +85,6 @@ export const useChat = () => {
   const [messages, setMessages] = useAtom(currentMessagesAtom);
   const setSummary = useSetAtom(conversationSummaryAtom);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCompacting, setIsCompacting] = useState(false);
   const [currentMessage, setCurrentMessage] = useState<string>("");
   const [shouldSubscribe, setShouldSubscribe] = useState(false);
   const [assistantMessageId, setAssistantMessageId] = useState<string>("");
@@ -383,10 +382,6 @@ export const useChat = () => {
           } else if (data.type === "turn.completed") {
             console.log("Turn completed:", data);
             // Tool usage is complete, final text should follow
-          } else if (data.type === "compacting") {
-            setIsCompacting(true);
-          } else if (data.type === "compactionComplete") {
-            setIsCompacting(false);
           } else if (data.type === "error") {
             console.error("Stream error:", data.message);
 
@@ -439,7 +434,6 @@ export const useChat = () => {
             );
 
             setIsLoading(false);
-            setIsCompacting(false);
             setShouldSubscribe(false);
           }
         },
@@ -457,7 +451,6 @@ export const useChat = () => {
             ),
           );
           setIsLoading(false);
-          setIsCompacting(false);
           setShouldSubscribe(false);
         },
       },
@@ -505,9 +498,11 @@ export const useChat = () => {
   );
 
   const handleDeleteConversation = useCallback(async () => {
+    const conversationId = messageHistory.data?.conversationId;
+    if (!conversationId) return;
+
     try {
-      // Delete without specifying conversationId - will delete all
-      await deleteConversation({});
+      await deleteConversation({ conversationId });
 
       // Prevent stale hydration: set cache to empty immediately
       queryClient.setQueryData<MessageHistoryResponse>(["messageHistory"], {
@@ -525,13 +520,18 @@ export const useChat = () => {
     } catch (error) {
       console.error("Failed to delete conversation:", error);
     }
-  }, [deleteConversation, setMessages, setSummary, queryClient]);
+  }, [
+    deleteConversation,
+    setMessages,
+    setSummary,
+    queryClient,
+    messageHistory.data?.conversationId,
+  ]);
 
   return {
     messages,
     isLoading,
     isMessageLimitLoading: isMessageLimitsLoading,
-    isCompacting,
     handleSendMessage,
     handleDeleteConversation,
     canSendMessage,

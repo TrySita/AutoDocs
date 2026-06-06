@@ -6,7 +6,6 @@ from database.manager import DatabaseManager, session_scope
 from database.models import (
     FileModel,
     DefinitionModel,
-    ImportModel,
     ReferenceModel,
 )
 
@@ -244,31 +243,6 @@ def sample_type_references(db_manager, sample_definitions):
 
 
 @pytest.fixture
-def sample_imports(db_manager, sample_file):
-    """Create sample ImportModel instances for testing."""
-    with session_scope(db_manager) as session:
-        imports = []
-
-        # Import MathUtils from ./utils
-        math_utils_import = ImportModel(
-            specifier="MathUtils",
-            module="./utils",
-            import_type="named",
-            resolved_file_path="test/utils.ts",
-            is_external=False,
-        )
-        math_utils_import.file = sample_file
-
-        imports = [math_utils_import]
-
-        for import_model in imports:
-            session.add(import_model)
-
-        session.flush()
-        return imports
-
-
-@pytest.fixture
 def dependency_file(db_manager):
     """Create a dependency file for testing file-level dependencies."""
     with session_scope(db_manager) as session:
@@ -343,15 +317,10 @@ def processing_order(
     sample_definitions,
     sample_function_calls,
     sample_type_references,
-    sample_imports,
     dependency_file,
 ):
     """Fixture that provides test data and returns files in processing order (simulating topological sort)."""
     with session_scope(db_manager) as session:
-        # Update the import to point to the dependency file
-        math_utils_import = sample_imports[0]
-        math_utils_import.resolved_file_path = dependency_file.file_path
-
         # Link function calls to their actual definitions
         call_add, call_multiply, call_math_utils = sample_function_calls
 

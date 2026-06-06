@@ -1,7 +1,7 @@
 import hashlib
 import re
 
-from database.models import DefinitionModel, FileModel, ImportModel
+from database.models import DefinitionModel, FileModel
 from sqlalchemy.orm import Session
 
 

@@ -14,6 +14,7 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
 from ast_parsing.types import FileParseResult, ParsedASTResult
+from database.types import ParseDelta
 
 from .scip_symbol_resolution import (
     collect_repo_symbols_with_scip,
@@ -55,6 +56,10 @@ class HybridParseResult:
     symbol_mappings: list[SymbolMapping]
     files_processed: int
     definitions_enhanced: int  # How many tree-sitter defs got SCIP enhancements
+    # Change delta from the internal AST parser. None on a full parse; populated
+    # on an incremental parse so the ingestion worker can drive incremental
+    # summaries/embeddings instead of reading a separate parser singleton.
+    delta: ParseDelta | None = None
 
 
 class HybridParser:
@@ -143,6 +148,7 @@ class HybridParser:
             definitions_enhanced=len(
                 [d for d in enhanced_definitions if d.scip_symbol]
             ),
+            delta=parser.current_delta,
         )
 
     def _load_parsed_definitions(

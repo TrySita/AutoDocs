@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import traceback
 import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
@@ -20,6 +19,20 @@ from typing import Callable, Awaitable, TypeVar
 
 
 from api.schemas import JobStatus, JobProgress
+
+# Generic, client-safe failure message. The full exception and traceback are
+# logged server-side; the API client only ever sees this plus the failure type.
+_GENERIC_FAILURE_MESSAGE = "Ingestion job failed"
+
+
+def _sanitize_error(exc: BaseException) -> str:
+    """Build a one-line, leak-free error message from an exception.
+
+    The exception's own message can embed internal filesystem paths or other
+    sensitive detail, so we expose only the exception class name alongside a
+    generic message. The full traceback is logged separately for operators.
+    """
+    return f"{_GENERIC_FAILURE_MESSAGE} ({type(exc).__name__})"
 
 
 @dataclass
@@ -90,12 +103,13 @@ async def _run_job(
         record.finished_at = datetime.now(timezone.utc)
         logger.info(f"Job {job_id} completed successfully")
     except Exception as e:  # noqa: BLE001
-        tb = traceback.format_exc()
+        # Log the full traceback for operators, but never surface it to API
+        # clients: store only a sanitized one-line message on the record.
         record.status = JobStatus.failed
-        record.error = f"{e}\n{tb}"
+        record.error = _sanitize_error(e)
         record.progress = JobProgress.failed
         record.finished_at = datetime.now(timezone.utc)
-        logger.error(f"Job {job_id} failed: {e}")
+        logger.exception("Job %s failed", job_id)
 
 
 async def submit_job(

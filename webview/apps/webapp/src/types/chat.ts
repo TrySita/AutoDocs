@@ -11,8 +11,7 @@ export interface RelatedDefinition {
 
 export interface SearchQuery {
   query: string;
-  limit?: number;
-  similarity_threshold?: number;
+  k?: number;
 }
 
 export interface ToolCall {

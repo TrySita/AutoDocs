@@ -21,7 +21,6 @@ from database.manager import DatabaseManager, get_current_session, session_scope
 from database.models import (
     DefinitionModel,
     FileModel,
-    ImportModel,
     PackageModel,
     RepositoryModel,
 )
@@ -308,12 +307,6 @@ class ASTParser:
                     )
                     result.files[relative_path] = file_result
 
-                    # Aggregate dependencies
-                    result.dependencies["imports"].extend(  # pyright: ignore[reportAny]
-                        [imp.__dict__ for imp in file_result.imports]
-                    )
-                    result.dependencies["exports"].extend(file_result.exports)  # pyright: ignore[reportAny]
-
                 except Exception as e:
                     print(f"Warning: Error parsing file {file_path}: {e}")
                     continue
@@ -370,43 +363,48 @@ class ASTParser:
             repo_path: Repository root path
         """
 
-        with session_scope(self.db_manager) as session:
-            # Handle deleted files - remove from database
-            for deleted_file in git_changes.deleted:
-                relative_path = get_repo_path(deleted_file, repo_path=repo_path)
-                file_record = (
-                    session.query(FileModel).filter_by(file_path=relative_path).first()
+        # Use the ambient parse session so deletions and renames share the same
+        # transaction as the rest of the parse. Opening a separate session_scope
+        # here committed these changes immediately, so a later failure in the
+        # parse could leave deletions/renames persisted with no matching insert.
+        session = get_current_session()
+
+        # Handle deleted files - remove from database
+        for deleted_file in git_changes.deleted:
+            relative_path = get_repo_path(deleted_file, repo_path=repo_path)
+            file_record = (
+                session.query(FileModel).filter_by(file_path=relative_path).first()
+            )
+            if file_record:
+                logger.info(f"Removing deleted file from database: {relative_path}")
+                session.delete(file_record)
+            # Record in delta
+            if self.current_delta is not None:
+                self.current_delta.files_deleted.append(relative_path)
+
+        # Handle renamed files - update file paths in database
+        for renamed_file in git_changes.renamed:
+            old_relative_path = get_repo_path(renamed_file.old, repo_path=repo_path)
+            new_relative_path = get_repo_path(renamed_file.new, repo_path=repo_path)
+
+            file_record = (
+                session.query(FileModel)
+                .filter_by(file_path=old_relative_path)
+                .first()
+            )
+            if file_record:
+                logger.info(
+                    f"Updating renamed file: {old_relative_path} -> {new_relative_path}"
                 )
-                if file_record:
-                    print(f"Removing deleted file from database: {relative_path}")
-                    session.delete(file_record)
-                # Record in delta
-                if self.current_delta is not None:
-                    self.current_delta.files_deleted.append(relative_path)
+                file_record.file_path = new_relative_path
 
-            # Handle renamed files - update file paths in database
-            for renamed_file in git_changes.renamed:
-                old_relative_path = get_repo_path(renamed_file.old, repo_path=repo_path)
-                new_relative_path = get_repo_path(renamed_file.new, repo_path=repo_path)
-
-                file_record = (
-                    session.query(FileModel)
-                    .filter_by(file_path=old_relative_path)
-                    .first()
+            # Record in delta
+            if self.current_delta is not None:
+                self.current_delta.files_renamed.append(
+                    type(renamed_file)(old=old_relative_path, new=new_relative_path)
                 )
-                if file_record:
-                    print(
-                        f"Updating renamed file: {old_relative_path} -> {new_relative_path}"
-                    )
-                    file_record.file_path = new_relative_path
 
-                # Record in delta
-                if self.current_delta is not None:
-                    self.current_delta.files_renamed.append(
-                        type(renamed_file)(old=old_relative_path, new=new_relative_path)
-                    )
-
-            session.commit()
+        session.flush()
 
     def _process_file_with_comparison(
         self,
@@ -479,18 +477,6 @@ class ASTParser:
                 # Update file content
                 existing_file.file_content = file_content.strip()
 
-                # Remove old imports and add new ones
-                old_imports = (
-                    session.query(ImportModel).filter_by(file=existing_file).all()
-                )
-                for old_import in old_imports:
-                    session.delete(old_import)
-
-                # Add new imports
-                for import_model in unpersisted_result.imports:
-                    import_model.file = existing_file
-                    session.add(import_model)
-
                 session.flush()  # flush so new definitions don't conflict
 
                 # Add new definitions
@@ -530,8 +516,6 @@ class ASTParser:
                 return FileParseResult(
                     language=language,
                     definitions=final_definitions,
-                    imports=unpersisted_result.imports,
-                    exports=unpersisted_result.exports,
                 )
 
         # New file or full parsing - create and persist everything
@@ -566,8 +550,6 @@ class ASTParser:
         return FileParseResult(
             language=language,
             definitions=unpersisted_result.definitions,
-            imports=unpersisted_result.imports,
-            exports=unpersisted_result.exports,
         )
 
     def _separate_files(self, all_files: list[str]) -> None:
@@ -612,8 +594,6 @@ class ASTParser:
         """
 
         definitions: list[DefinitionModel] = []
-        tree_imports: list[ImportModel] = []
-        tree_exports: list[tuple[str, str]] = []  # tuple of name, source code
 
         try:
             # Parse the file content into an Abstract Syntax Tree (AST)
@@ -621,11 +601,18 @@ class ASTParser:
             seen_full: defaultdict[int, bool] = defaultdict(
                 bool
             )  # Track seen definitions
-            seen_start: defaultdict[int, bool] = defaultdict(
-                bool
-            )  # Track seen start lines
+            # Track kept definitions by (start line, name) so two distinct
+            # definitions that start on the same line (e.g. "const a = ...,
+            # b = ...;" or "a = 1; b = 2") are both kept; keying on the start
+            # line alone dropped the second one.
+            seen_start: set[tuple[int, str]] = set()
+            # Start lines that already carry a named definition. Anonymous
+            # captures (e.g. the arrow function inside "const f = () => {}")
+            # are wrapper duplicates of a named def and are dropped when the
+            # line is already claimed by one.
+            named_start_lines: set[int] = set()
 
-            # Apply the query to get definitions, imports, and exports
+            # Apply the query to get definitions
             cursor = QueryCursor(parser_info.query)
 
             ### Process definitions ###
@@ -650,26 +637,29 @@ class ASTParser:
                     else "anonymous"
                 )
 
-                # Check if anonymous or variable definitions have already been seen, we don't care about them
+                start_line = def_node.start_point[0] + 1
+
+                # Anonymous / variable captures are wrapper duplicates of a
+                # named definition; drop them when their line is already covered
+                # by a multi-line def or already carries a named definition.
                 if def_name == "anonymous" or kind == "variable":
-                    if seen_full.get(def_node.start_point[0] + 1, False):
+                    if seen_full.get(start_line, False) or start_line in named_start_lines:
                         continue
 
-                if seen_start.get(
-                    def_node.start_point[0] + 1, False
-                ):  # If the start line is repeated, we skip
+                if (start_line, def_name) in seen_start:
+                    # Same definition (same start line and name) already kept.
                     continue
                 else:
                     for line in range(
-                        def_node.start_point[0] + 1,
+                        start_line,
                         def_node.end_point[0] + 1,
                     ):
                         seen_full[line] = True
-                    seen_start[def_node.start_point[0] + 1] = True
+                    seen_start.add((start_line, def_name))
+                    if def_name != "anonymous":
+                        named_start_lines.add(start_line)
 
                 definition_source_code = def_node.text.decode("utf-8").strip()
-
-                is_default_export = False
 
                 definition = DefinitionModel(
                     name=def_name,
@@ -684,7 +674,6 @@ class ASTParser:
                     ),
                     definition_type=kind or "unknown",
                     docstring=extract_capture_text(captures, "doc"),
-                    is_default_export=is_default_export,
                 )
 
                 definitions.append(definition)
@@ -695,8 +684,6 @@ class ASTParser:
 
         return UnpersistedParseResult(
             definitions=definitions,
-            imports=tree_imports,
-            exports=tree_exports,
         )
 
     async def _load_parsers(self, files: list[str]) -> dict[str, LanguageParserInfo]:
@@ -738,8 +725,11 @@ class ASTParser:
                     f"No parser available for extension {ext} in file {file_path}"
                 )
 
+            # Store a relative path, consistent with the paths used everywhere
+            # else in the parser (recursive_parse_directory persists relative
+            # paths); an absolute path here would not match other records.
             file = FileModel(
-                file_path=resolved_path,
+                file_path=as_relative_path(resolved_path),
                 language=language,
                 file_content=file_content,
             )
@@ -752,6 +742,14 @@ class ASTParser:
                 file_content=file_content,
                 parser_info=parser_info,
             )
+
+            # Associate the extracted definitions with the created file and
+            # persist them, mirroring the full-parse path in
+            # _process_file_with_comparison.
+            for definition in file_result.definitions:
+                definition.file = file
+                session.add(definition)
+            session.flush()
 
         return file_result
 

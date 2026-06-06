@@ -4,10 +4,13 @@ Simple line-based mapping between tree-sitter definitions and SCIP symbols.
 """
 
 from __future__ import annotations
+import logging
 from dataclasses import dataclass
 
 from .scip_symbol_resolution import ScipSymbol
 from database.models import DefinitionModel
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -66,6 +69,10 @@ class SymbolMapper:
             if len(candidates) == 1:
                 # Single match - easy case
                 matched_symbol = candidates[0]
+            else:
+                # Multiple candidates on the same start line (e.g. two
+                # definitions on one source line). Disambiguate by name.
+                matched_symbol = self._match_by_name(definition, candidates)
 
             if matched_symbol:
                 mapping = SymbolMapping(
@@ -75,6 +82,31 @@ class SymbolMapper:
 
         self.mappings = mappings
         return mappings
+
+    def _match_by_name(
+        self, definition: DefinitionModel, candidates: list[ScipSymbol]
+    ) -> ScipSymbol | None:
+        """Pick the SCIP symbol whose name matches the definition's name.
+
+        Used when several SCIP symbols share a definition's start line. Returns
+        the unique name match, or None when there is no match or the name is
+        ambiguous (more than one candidate with the same name).
+        """
+        name_matches = [c for c in candidates if c.name == definition.name]
+        if len(name_matches) == 1:
+            return name_matches[0]
+        if not name_matches:
+            reason = f"no SCIP candidate among {len(candidates)} on its line matches by name"
+        else:
+            reason = f"{len(name_matches)} SCIP candidates on its line share that name"
+        logger.warning(
+            "Leaving definition %r at %s:%d unmapped: %s",
+            definition.name,
+            definition.file.file_path,
+            definition.start_line,
+            reason,
+        )
+        return None
 
     def _normalize_file_path(self, file_path: str) -> str:
         """Normalize file paths for comparison."""

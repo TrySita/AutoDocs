@@ -36,17 +36,15 @@ class IngestRequest(BaseModel):
 
     - github_url: Public GitHub repo URL (https)
     - repo_slug: slug used to name resources
-    - branch: optional branch name (default is repo default)
     - force_full: if true, run full ingestion even if DB exists
-    - turso_db_name: optional override for DB name (defaults from slug)
-    - index: deprecated; vector search uses local sqlite-vec
-    - sync_interval: embedded replica periodic sync interval (seconds)
-    - encryption_key: optional at-rest encryption key for embedded replica
+
+    Unknown keys (e.g. a legacy ``branch`` or ``db_path``) are ignored: branch
+    selection is not implemented, so accepting and silently dropping the field
+    avoids breaking clients that still send it.
     """
 
     github_url: str
     repo_slug: str
-    branch: str | None = None
     force_full: bool = False
 
 
@@ -69,11 +67,17 @@ class JobStatusResponse(BaseModel):
 
 
 class SemanticSearchResult(BaseModel):
-    """Individual search result with similarity score."""
+    """Individual search result with similarity score.
+
+    `similarity_score` is the vector-distance-derived similarity in [0, 1]. It is
+    `None` when the result has no comparable vector distance (e.g. a hybrid
+    result matched only by full-text search), so callers are not handed a
+    fabricated 0.0 for a result that may in fact rank highly.
+    """
 
     entity_type: Literal["file", "definition"]
     entity_id: int
-    similarity_score: float
+    similarity_score: float | None
     summary_text: str
     metadata: EmbeddingMetadata
 
