@@ -3,6 +3,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import { SupabaseDb } from '../db';
 import { SearchItemSchema, type SemanticSearchResult } from '../types';
 import { semanticSearch } from './semantic-search';
+import { searchWeb as searchYoucomWeb } from './youcom-search';
 
 // Tool parameters schema
 export const BatchSearchParameters = z
@@ -23,6 +24,21 @@ export const BATCH_SEARCH_TOOL_SCHEMA = {
   name: 'batch_search_codebase',
   description: 'Run parallel semantic searches across the codebase',
   parameters: zodToJsonSchema(BatchSearchParameters),
+  strict: false,
+};
+
+export const WEB_SEARCH_TOOL_SCHEMA = {
+  type: 'function' as const,
+  name: 'search_web',
+  description: 'Search the web for external context when codebase search is not enough',
+  parameters: zodToJsonSchema(
+    z
+      .object({
+        query: z.string().min(1).max(400),
+        count: z.number().int().min(1).max(10).optional(),
+      })
+      .strict(),
+  ),
   strict: false,
 };
 
@@ -104,4 +120,8 @@ export async function batchSearchCodebases(
   });
 
   return { results };
+}
+
+export async function webSearch(query: string, count = 5): Promise<{ query: string; result: string }> {
+  return searchYoucomWeb(query, count);
 }

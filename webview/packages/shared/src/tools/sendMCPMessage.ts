@@ -5,6 +5,8 @@ import {
   BATCH_SEARCH_TOOL_SCHEMA,
   batchSearchCodebases,
   BatchSearchParams,
+  WEB_SEARCH_TOOL_SCHEMA,
+  webSearch,
 } from './batchSearchTool';
 
 // Configuration constants for easy tuning
@@ -53,6 +55,11 @@ You serve as an MCP Q&A server for codebases. Your core objective is to answer t
 - Use for questions like “How does X work?”, “Where is Y implemented?”, or “What handles Z?”
 - Run 3–5 focused queries (e.g., synonyms, framework terms, symbol names, error strings).
 - Adjust \`k\` (5–10) for optimal coverage versus precision.
+
+**Optional tool:** \`search_web\`
+
+- Use when the answer may depend on external docs, APIs, release notes, or ecosystem context that is not in the repo.
+- Keep the query focused and prefer it only when codebase search alone is not enough.
 
 # Retrieval Strategy
 
@@ -164,7 +171,9 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-const TOOLS = [BATCH_SEARCH_TOOL_SCHEMA];
+const TOOLS = process.env.YDC_API_KEY
+  ? [BATCH_SEARCH_TOOL_SCHEMA, WEB_SEARCH_TOOL_SCHEMA]
+  : [BATCH_SEARCH_TOOL_SCHEMA];
 
 // Lazily construct the OpenAI client. Validating OPENAI_API_KEY at module load
 // would crash any consumer of @sita/shared (the package re-exports this module
@@ -307,12 +316,21 @@ export async function runWithBudgets(opts: LoopOpts): Promise<string> {
         const started = Date.now();
 
         try {
-          let toolResult: { results: Array<{ query: string; result: string }> } | { error: string };
+          let toolResult:
+            | { results: Array<{ query: string; result: string }> }
+            | { query: string; result: string }
+            | { error: string };
 
           if (call.name === 'batch_search_codebase') {
             const args: BatchSearchParams = JSON.parse(call.arguments);
             toolResult = await withTimeout(
               batchSearchCodebases(args, opts.repoSlug, opts.responseType),
+              opts.toolTimeoutMs,
+            );
+          } else if (call.name === 'search_web') {
+            const args = JSON.parse(call.arguments) as { query: string; count?: number };
+            toolResult = await withTimeout(
+              webSearch(args.query, args.count ?? 5),
               opts.toolTimeoutMs,
             );
           } else {
@@ -324,7 +342,12 @@ export async function runWithBudgets(opts: LoopOpts): Promise<string> {
             name: call.name,
             call_id: call.call_id,
             ms: Date.now() - started,
-            summary: 'results' in toolResult ? { batches: toolResult.results.length } : undefined,
+            summary:
+              'results' in toolResult
+                ? { batches: toolResult.results.length }
+                : 'result' in toolResult
+                  ? { batches: 1 }
+                  : undefined,
           });
 
           // Append as a tool message so the model can use it next turn

@@ -141,11 +141,19 @@ We’re actively adding a one-click "Resync" button in the UI, followed by autom
 
 The MCP server is available at `http://localhost:3000/api/mcp` and is designed for coding agents and MCP-compatible clients. It exposes a `codebase-qna` tool that answers repository-scoped questions by querying the analysis databases that AutoDocs produces.
 
+If you set `YDC_API_KEY`, the MCP agent also gets an optional `search_web` tool for pulling in external context from You.com when repo-local search is not enough.
+
 Tips
 
 - Point your MCP client at `http://localhost:3000/api/mcp`.
 - Include an `x-repo-id` header with the repo ID (you can find it in the UI).
 - For setup guides with popular tools (Claude, Cursor, Continue), see https://docs.trysita.com
+
+Optional web search:
+
+```bash
+export YDC_API_KEY="your-key-here"
+```
 
 ## Development Workflow (for contributing)
 
